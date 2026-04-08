@@ -1,5 +1,8 @@
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import { existsSync } from 'fs';
+import { createReadStream } from 'fs';
+import { basename, extname } from 'path';
 import type { ToolDefinition, ToolResult, ToolContext } from '../types.js';
 import { errorResponse } from '../types.js';
 
@@ -153,6 +156,136 @@ const ExportSlideThumbnailSchema = z.object({
   mimeType: z.enum(["PNG", "JPEG"]).optional().default("PNG"),
   size: z.enum(["SMALL", "MEDIUM", "LARGE"]).optional().default("LARGE")
 });
+
+const InsertSlidesImageFromUrlSchema = z.object({
+  presentationId: z.string().min(1, "Presentation ID is required"),
+  pageObjectId: z.string().min(1, "Slide/page object ID is required"),
+  imageUrl: z.string().url("A valid image URL is required"),
+  x: z.number().optional().default(0),
+  y: z.number().optional().default(0),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
+const InsertSlidesLocalImageSchema = z.object({
+  presentationId: z.string().min(1, "Presentation ID is required"),
+  pageObjectId: z.string().min(1, "Slide/page object ID is required"),
+  localImagePath: z.string().min(1, "Local image path is required"),
+  x: z.number().optional().default(0),
+  y: z.number().optional().default(0),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  makePublic: z.boolean().optional().default(true),
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function uploadImageToDriveForSlides(
+  ctx: ToolContext,
+  localFilePath: string,
+  makePublic: boolean = true
+): Promise<string> {
+  if (!existsSync(localFilePath)) {
+    throw new Error(`Image file not found: ${localFilePath}`);
+  }
+
+  const fileName = basename(localFilePath);
+  const mimeTypeMap: { [key: string]: string } = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.bmp': 'image/bmp',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml'
+  };
+
+  const ext = extname(localFilePath).toLowerCase();
+  const mimeType = mimeTypeMap[ext] || 'application/octet-stream';
+
+  const drive = ctx.getDrive();
+
+  const uploadResponse = await drive.files.create({
+    requestBody: { name: fileName, mimeType },
+    media: { mimeType, body: createReadStream(localFilePath) },
+    fields: 'id,webViewLink,webContentLink',
+    supportsAllDrives: true
+  });
+
+  const fileId = uploadResponse.data.id;
+  if (!fileId) throw new Error('Failed to upload image to Drive');
+
+  if (makePublic) {
+    await drive.permissions.create({
+      fileId,
+      requestBody: { role: 'reader', type: 'anyone' }
+    });
+  }
+
+  const fileInfo = await drive.files.get({
+    fileId,
+    fields: 'webContentLink',
+    supportsAllDrives: true
+  });
+
+  const webContentLink = fileInfo.data.webContentLink;
+  if (!webContentLink) throw new Error('Failed to get web content link for uploaded image');
+
+  return webContentLink;
+}
+
+async function insertImageIntoSlide(
+  ctx: ToolContext,
+  presentationId: string,
+  pageObjectId: string,
+  imageUrl: string,
+  x: number,
+  y: number,
+  width?: number,
+  height?: number,
+): Promise<ToolResult> {
+  const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+  const objectId = `img_${uuidv4().substring(0, 8)}`;
+
+  const elementProperties: any = {
+    pageObjectId,
+  };
+
+  if (width != null && height != null) {
+    elementProperties.size = {
+      width: { magnitude: width, unit: 'EMU' },
+      height: { magnitude: height, unit: 'EMU' },
+    };
+  }
+
+  elementProperties.transform = {
+    scaleX: 1,
+    scaleY: 1,
+    translateX: x,
+    translateY: y,
+    unit: 'EMU',
+  };
+
+  await slidesService.presentations.batchUpdate({
+    presentationId,
+    requestBody: {
+      requests: [{
+        createImage: {
+          objectId,
+          url: imageUrl,
+          elementProperties,
+        }
+      }]
+    }
+  });
+
+  return {
+    content: [{ type: 'text', text: `Inserted image into slide ${pageObjectId} (objectId: ${objectId})` }],
+    isError: false,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Tool Definitions
@@ -470,6 +603,41 @@ export const toolDefinitions: ToolDefinition[] = [
         size: { type: "string", enum: ["SMALL", "MEDIUM", "LARGE"], description: "Thumbnail size" }
       },
       required: ["presentationId", "slideObjectId"]
+    }
+  },
+  {
+    name: "insertSlidesImageFromUrl",
+    description: "Insert an image into a Google Slides slide from a publicly accessible URL",
+    inputSchema: {
+      type: "object",
+      properties: {
+        presentationId: { type: "string", description: "Presentation ID" },
+        pageObjectId: { type: "string", description: "Slide/page object ID to insert the image into" },
+        imageUrl: { type: "string", description: "Publicly accessible URL of the image" },
+        x: { type: "number", description: "X position in EMU (default: 0)" },
+        y: { type: "number", description: "Y position in EMU (default: 0)" },
+        width: { type: "number", description: "Width in EMU (omit to auto-size)" },
+        height: { type: "number", description: "Height in EMU (omit to auto-size)" }
+      },
+      required: ["presentationId", "pageObjectId", "imageUrl"]
+    }
+  },
+  {
+    name: "insertSlidesLocalImage",
+    description: "Upload a local image file to Google Drive and insert it into a Google Slides slide",
+    inputSchema: {
+      type: "object",
+      properties: {
+        presentationId: { type: "string", description: "Presentation ID" },
+        pageObjectId: { type: "string", description: "Slide/page object ID to insert the image into" },
+        localImagePath: { type: "string", description: "Absolute path to the local image file" },
+        x: { type: "number", description: "X position in EMU (default: 0)" },
+        y: { type: "number", description: "Y position in EMU (default: 0)" },
+        width: { type: "number", description: "Width in EMU (omit to auto-size)" },
+        height: { type: "number", description: "Height in EMU (omit to auto-size)" },
+        makePublic: { type: "boolean", description: "Make uploaded image publicly accessible (default: true, required for Slides API to fetch it)" }
+      },
+      required: ["presentationId", "pageObjectId", "localImagePath"]
     }
   },
 ];
@@ -1480,6 +1648,21 @@ export async function handleTool(
         content: [{ type: 'text', text: `Slide thumbnail URL (${a.mimeType}, ${a.size}): ${url}` }],
         isError: false,
       };
+    }
+
+    case "insertSlidesImageFromUrl": {
+      const validation = InsertSlidesImageFromUrlSchema.safeParse(args);
+      if (!validation.success) return errorResponse(validation.error.errors[0].message);
+      const a = validation.data;
+      return insertImageIntoSlide(ctx, a.presentationId, a.pageObjectId, a.imageUrl, a.x, a.y, a.width, a.height);
+    }
+
+    case "insertSlidesLocalImage": {
+      const validation = InsertSlidesLocalImageSchema.safeParse(args);
+      if (!validation.success) return errorResponse(validation.error.errors[0].message);
+      const a = validation.data;
+      const imageUrl = await uploadImageToDriveForSlides(ctx, a.localImagePath, a.makePublic);
+      return insertImageIntoSlide(ctx, a.presentationId, a.pageObjectId, imageUrl, a.x, a.y, a.width, a.height);
     }
 
     default:

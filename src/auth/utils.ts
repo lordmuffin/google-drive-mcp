@@ -45,6 +45,15 @@ export function getAdditionalLegacyPaths(): string[] {
   ].filter(Boolean) as string[];
 }
 
+// Returns the absolute path for the multi-account token store file.
+export function getAccountsFilePath(): string {
+  const customPath = process.env.GOOGLE_DRIVE_MCP_ACCOUNTS_PATH;
+  if (customPath) {
+    return path.resolve(customPath);
+  }
+  return path.join(getConfigDir(), 'accounts.json');
+}
+
 // Returns all candidate paths for the credentials file, in priority order:
 // 1. Environment variable GOOGLE_DRIVE_OAUTH_CREDENTIALS (highest priority)
 // 2. Config directory ~/.config/google-drive-mcp/gcp-oauth.keys.json

@@ -40,6 +40,7 @@ const BINARY_MIME_TYPES: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 const SearchSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   query: z.string().min(1, "Search query is required"),
   pageSize: z.number().int().min(1).max(100).optional(),
   pageToken: z.string().optional(),
@@ -47,70 +48,83 @@ const SearchSchema = z.object({
 });
 
 const CreateTextFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   name: z.string().min(1, "File name is required"),
   content: z.string(),
   parentFolderId: z.string().optional()
 });
 
 const UpdateTextFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   content: z.string(),
   name: z.string().optional()
 });
 
 const CreateFolderSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   name: z.string().min(1, "Folder name is required"),
   parent: z.string().optional()
 });
 
 const ListFolderSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   folderId: z.string().optional(),
   pageSize: z.number().int().min(1).max(100).optional(),
   pageToken: z.string().optional()
 });
 
 const ListSharedDrivesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   pageSize: z.number().int().min(1).max(100).optional(),
   pageToken: z.string().optional()
 });
 
 const DeleteItemSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   itemId: z.string().min(1, "Item ID is required")
 });
 
 const RenameItemSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   itemId: z.string().min(1, "Item ID is required"),
   newName: z.string().min(1, "New name is required")
 });
 
 const MoveItemSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   itemId: z.string().min(1, "Item ID is required"),
   destinationFolderId: z.string().optional()
 });
 
 const CopyFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   newName: z.string().optional(),
   parentFolderId: z.string().optional()
 });
 
 const CreateShortcutSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   targetFileId: z.string().min(1, "Target file ID is required"),
   parentFolderId: z.string().optional(),
   shortcutName: z.string().optional()
 });
 
 const LockFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   reason: z.string().optional(),
   ownerRestricted: z.boolean().optional()
 });
 
 const UnlockFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required")
 });
 
 const UploadFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   localPath: z.string().min(1, "Local file path is required"),
   name: z.string().optional(),
   parentFolderId: z.string().optional(),
@@ -119,6 +133,7 @@ const UploadFileSchema = z.object({
 });
 
 const DownloadFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   localPath: z.string().min(1, "Local file path is required"),
   exportMimeType: z.string().optional(),
@@ -126,10 +141,12 @@ const DownloadFileSchema = z.object({
 });
 
 const ListPermissionsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
 });
 
 const AddPermissionSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   emailAddress: z.string().email("Valid email is required"),
   role: z.enum(["owner", "organizer", "fileOrganizer", "writer", "commenter", "reader"]).default("reader"),
@@ -139,12 +156,14 @@ const AddPermissionSchema = z.object({
 });
 
 const UpdatePermissionSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   permissionId: z.string().min(1, "Permission ID is required"),
   role: z.enum(["owner", "organizer", "fileOrganizer", "writer", "commenter", "reader"]),
 });
 
 const RemovePermissionSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   permissionId: z.string().optional(),
   emailAddress: z.string().email("Valid email is required").optional(),
@@ -155,6 +174,7 @@ const RemovePermissionSchema = z.object({
 });
 
 const ShareFileSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   emailAddress: z.string().email("Valid email is required"),
   role: z.enum(["writer", "commenter", "reader"]).default("reader"),
@@ -163,18 +183,21 @@ const ShareFileSchema = z.object({
 });
 
 const ConvertPdfToGoogleDocSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   newName: z.string().optional(),
   parentFolderId: z.string().optional(),
 });
 
 const BulkConvertFolderPdfsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   folderId: z.string().min(1, "Folder ID is required"),
   maxResults: z.number().int().min(1).max(200).optional().default(100),
   continueOnError: z.boolean().optional().default(true),
 });
 
 const UploadPdfWithSplitSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   localPath: z.string().min(1, "Local file path is required"),
   split: z.boolean().optional().default(false),
   maxPagesPerChunk: z.number().int().min(1).max(500).optional(),
@@ -210,30 +233,42 @@ async function splitPdfIntoChunkFiles(localPath: string, maxPagesPerChunk: numbe
 }
 
 const GetRevisionsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   pageSize: z.number().int().min(1).max(200).optional().default(50),
   pageToken: z.string().optional(),
 });
 
 const RestoreRevisionSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().min(1, "File ID is required"),
   revisionId: z.string().min(1, "Revision ID is required"),
   confirm: z.boolean().optional().default(false),
 });
 
 const AuthTestFileAccessSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   fileId: z.string().optional(),
 });
 
-function getGrantedScopesFromAuthClient(ctx: ToolContext): string[] {
-  const scopeRaw = ctx.authClient?.credentials?.scope;
+const AuthGetStatusSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
+});
+
+const AuthListScopesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
+});
+
+async function getGrantedScopesFromAuthClient(ctx: ToolContext, account: string): Promise<string[]> {
+  const authClient = await ctx.getAuthClientForAccount(account ?? '');
+  const scopeRaw = authClient?.credentials?.scope;
   if (!scopeRaw || typeof scopeRaw !== 'string') return [];
   return [...new Set(scopeRaw.split(' ').map((s: string) => s.trim()).filter(Boolean))];
 }
 
-function resolveScopeStatus(ctx: ToolContext): { requestedScopes: string[]; grantedScopes: string[]; missingScopes: string[] } {
+async function resolveScopeStatus(ctx: ToolContext, account: string): Promise<{ requestedScopes: string[]; grantedScopes: string[]; missingScopes: string[] }> {
   const requestedScopes = resolveOAuthScopes();
-  const grantedScopes = getGrantedScopesFromAuthClient(ctx);
+  const grantedScopes = await getGrantedScopesFromAuthClient(ctx, account);
   const missingScopes = requestedScopes.filter((s) => !grantedScopes.includes(s));
   return { requestedScopes, grantedScopes, missingScopes };
 }
@@ -249,6 +284,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         query: { type: "string", description: "Search query. When rawQuery=true, this is passed directly to the Google Drive API as the q parameter." },
         pageSize: { type: "number", description: "Results per page (default 50, max 100)" },
         pageToken: { type: "string", description: "Token for next page of results" },
@@ -263,6 +299,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         name: { type: "string", description: "File name (.txt or .md)" },
         content: { type: "string", description: "File content" },
         parentFolderId: { type: "string", description: "Parent folder ID" }
@@ -276,6 +313,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "ID of the file to update" },
         content: { type: "string", description: "New file content" },
         name: { type: "string", description: "New name (.txt or .md)" }
@@ -289,6 +327,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         name: { type: "string", description: "Folder name" },
         parent: { type: "string", description: "Parent folder ID or path" }
       },
@@ -301,10 +340,12 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         folderId: { type: "string", description: "Folder ID" },
         pageSize: { type: "number", description: "Items to return (default 50, max 100)" },
         pageToken: { type: "string", description: "Token for next page" }
-      }
+      },
+      required: []
     }
   },
   {
@@ -313,9 +354,11 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         pageSize: { type: "number", description: "Drives to return (default 50, max 100)" },
         pageToken: { type: "string", description: "Token for next page" }
-      }
+      },
+      required: []
     }
   },
   {
@@ -324,6 +367,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         itemId: { type: "string", description: "ID of the item to delete" }
       },
       required: ["itemId"]
@@ -335,6 +379,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         itemId: { type: "string", description: "ID of the item to rename" },
         newName: { type: "string", description: "New name" }
       },
@@ -347,6 +392,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         itemId: { type: "string", description: "ID of the item to move" },
         destinationFolderId: { type: "string", description: "Destination folder ID" }
       },
@@ -359,6 +405,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "ID of the file to copy" },
         newName: { type: "string", description: "Name for the copied file. If not provided, will use 'Copy of [original name]'" },
         parentFolderId: { type: "string", description: "ID or path of the destination folder (defaults to same folder as original)" }
@@ -372,6 +419,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         localPath: { type: "string", description: "Absolute path to the local file to upload" },
         name: { type: "string", description: "File name in Drive (defaults to local filename)" },
         parentFolderId: { type: "string", description: "Parent folder ID or path (e.g., '/Work/Projects'). Creates folders if needed. Defaults to root." },
@@ -387,6 +435,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" },
         localPath: { type: "string", description: "Absolute local path to save the file (must start with /). Can be a directory (filename auto-resolved from Drive metadata) or a full file path. Path is normalized before use." },
         exportMimeType: {
@@ -407,6 +456,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" }
       },
       required: ["fileId"]
@@ -418,6 +468,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" },
         emailAddress: { type: "string", description: "Target user/group email" },
         role: { type: "string", enum: ["owner", "organizer", "fileOrganizer", "writer", "commenter", "reader"], description: "Permission role" },
@@ -434,6 +485,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" },
         permissionId: { type: "string", description: "Permission ID" },
         role: { type: "string", enum: ["owner", "organizer", "fileOrganizer", "writer", "commenter", "reader"], description: "New role" }
@@ -447,6 +499,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" },
         permissionId: { type: "string", description: "Permission ID" },
         emailAddress: { type: "string", description: "User email (alternative to permissionId)" }
@@ -460,6 +513,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" },
         emailAddress: { type: "string", description: "User email" },
         role: { type: "string", enum: ["writer", "commenter", "reader"], description: "Access role" },
@@ -475,6 +529,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "PDF file ID in Google Drive" },
         newName: { type: "string", description: "Optional name for converted Doc" },
         parentFolderId: { type: "string", description: "Optional destination folder ID" }
@@ -488,6 +543,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         folderId: { type: "string", description: "Folder ID containing PDFs" },
         maxResults: { type: "number", description: "Maximum PDFs to process (1-200, default: 100)" },
         continueOnError: { type: "boolean", description: "Continue conversion when one file fails (default: true)" }
@@ -501,6 +557,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         localPath: { type: "string", description: "Absolute path to local PDF" },
         split: { type: "boolean", description: "Enable split mode" },
         maxPagesPerChunk: { type: "number", description: "Target max pages per chunk (advisory metadata)" },
@@ -516,6 +573,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" },
         pageSize: { type: "number", description: "Max revisions to return (default 50, max 200)" },
         pageToken: { type: "string", description: "Page token for pagination" }
@@ -529,6 +587,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Google Drive file ID" },
         revisionId: { type: "string", description: "Revision ID to restore" },
         confirm: { type: "boolean", description: "Safety flag. Must be true to execute restore." }
@@ -539,12 +598,24 @@ export const toolDefinitions: ToolDefinition[] = [
   {
     name: "authGetStatus",
     description: "Show authentication/token status and scope diagnostics",
-    inputSchema: { type: "object", properties: {} }
+    inputSchema: {
+      type: "object",
+      properties: {
+        account: { type: "string", description: "Email address of the Google account to use" }
+      },
+      required: []
+    }
   },
   {
     name: "authListScopes",
     description: "List configured/requested scopes and currently granted scopes",
-    inputSchema: { type: "object", properties: {} }
+    inputSchema: {
+      type: "object",
+      properties: {
+        account: { type: "string", description: "Email address of the Google account to use" }
+      },
+      required: []
+    }
   },
   {
     name: "authTestFileAccess",
@@ -552,8 +623,10 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: { type: "string", description: "Optional file ID for targeted access check" }
-      }
+      },
+      required: []
     }
   },
   {
@@ -562,6 +635,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         targetFileId: {
           type: "string",
           description: "The file or folder ID (not a path) to create a shortcut to"
@@ -584,6 +658,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: {
           type: "string",
           description: "ID of the file to lock"
@@ -606,6 +681,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         fileId: {
           type: "string",
           description: "ID of the file to unlock"
@@ -632,7 +708,8 @@ export async function handleTool(
       if (!validation.success) {
         return errorResponse(validation.error.errors[0].message);
       }
-      const { query: userQuery, pageSize, pageToken, rawQuery } = validation.data;
+      const { account, query: userQuery, pageSize, pageToken, rawQuery } = validation.data;
+      const drive = await ctx.getDriveForAccount(account ?? '');
 
       let formattedQuery: string;
       if (rawQuery) {
@@ -645,7 +722,7 @@ export async function handleTool(
         formattedQuery = `fullText contains '${escapedQuery}' and trashed = false`;
       }
 
-      const res = await ctx.getDrive().files.list({
+      const res = await drive.files.list({
         q: formattedQuery,
         pageSize: Math.min(pageSize || 50, 100),
         pageToken: pageToken,
@@ -662,7 +739,7 @@ export async function handleTool(
         if (folderId in pathCache) return pathCache[folderId];
         const promise = (async () => {
           try {
-            const folderRes = await ctx.getDrive().files.get({
+            const folderRes = await drive.files.get({
               fileId: folderId,
               fields: "name, parents",
               supportsAllDrives: true,
@@ -712,12 +789,13 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       ctx.validateTextFileExtension(data.name);
-      const parentFolderId = await ctx.resolveFolderId(data.parentFolderId);
+      const parentFolderId = await ctx.resolveFolderId(data.parentFolderId, drive);
 
       // Check if file already exists
-      const existingFileId = await ctx.checkFileExists(data.name, parentFolderId);
+      const existingFileId = await ctx.checkFileExists(data.name, drive, parentFolderId);
       if (existingFileId) {
         return errorResponse(
           `A file named "${data.name}" already exists in this location. ` +
@@ -731,7 +809,7 @@ export async function handleTool(
         parents: [parentFolderId]
       };
 
-      const file = await ctx.getDrive().files.create({
+      const file = await drive.files.create({
         requestBody: fileMetadata,
         media: {
           mimeType: fileMetadata.mimeType,
@@ -756,9 +834,10 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       // Check file MIME type
-      const existingFile = await ctx.getDrive().files.get({
+      const existingFile = await drive.files.get({
         fileId: data.fileId,
         fields: 'mimeType, name, parents',
         supportsAllDrives: true
@@ -776,7 +855,7 @@ export async function handleTool(
         updateMetadata.mimeType = getMimeTypeFromFilename(data.name);
       }
 
-      const updatedFile = await ctx.getDrive().files.update({
+      const updatedFile = await drive.files.update({
         fileId: data.fileId,
         requestBody: updateMetadata,
         media: {
@@ -802,11 +881,12 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const parentFolderId = await ctx.resolveFolderId(data.parent);
+      const parentFolderId = await ctx.resolveFolderId(data.parent, drive);
 
       // Check if folder already exists
-      const existingFolderId = await ctx.checkFileExists(data.name, parentFolderId);
+      const existingFolderId = await ctx.checkFileExists(data.name, drive, parentFolderId);
       if (existingFolderId) {
         return errorResponse(
           `A folder named "${data.name}" already exists in this location. ` +
@@ -819,7 +899,7 @@ export async function handleTool(
         parents: [parentFolderId]
       };
 
-      const folder = await ctx.getDrive().files.create({
+      const folder = await drive.files.create({
         requestBody: folderMetadata,
         fields: 'id, name, webViewLink',
         supportsAllDrives: true
@@ -842,11 +922,12 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       // Default to root if no folder specified
       const targetFolderId = data.folderId || 'root';
 
-      const res = await ctx.getDrive().files.list({
+      const res = await drive.files.list({
         q: `'${targetFolderId}' in parents and trashed = false`,
         pageSize: Math.min(data.pageSize || 50, 100),
         pageToken: data.pageToken,
@@ -879,8 +960,9 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const res = await ctx.getDrive().drives.list({
+      const res = await drive.drives.list({
         pageSize: Math.min(data.pageSize || 50, 100),
         pageToken: data.pageToken,
         fields: 'nextPageToken, drives(id, name, createdTime, hidden)'
@@ -912,11 +994,12 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const item = await ctx.getDrive().files.get({ fileId: data.itemId, fields: 'name', supportsAllDrives: true });
+      const item = await drive.files.get({ fileId: data.itemId, fields: 'name', supportsAllDrives: true });
 
       // Move to trash instead of permanent deletion
-      await ctx.getDrive().files.update({
+      await drive.files.update({
         fileId: data.itemId,
         requestBody: {
           trashed: true
@@ -937,14 +1020,15 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       // If it's a text file, check extension
-      const item = await ctx.getDrive().files.get({ fileId: data.itemId, fields: 'name, mimeType', supportsAllDrives: true });
+      const item = await drive.files.get({ fileId: data.itemId, fields: 'name, mimeType', supportsAllDrives: true });
       if (Object.values(TEXT_MIME_TYPES).includes(item.data.mimeType || '')) {
         ctx.validateTextFileExtension(data.newName);
       }
 
-      const updatedItem = await ctx.getDrive().files.update({
+      const updatedItem = await drive.files.update({
         fileId: data.itemId,
         requestBody: { name: data.newName },
         fields: 'id, name, modifiedTime',
@@ -966,9 +1050,10 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       const destinationFolderId = data.destinationFolderId ?
-        await ctx.resolveFolderId(data.destinationFolderId) :
+        await ctx.resolveFolderId(data.destinationFolderId, drive) :
         'root';
 
       // Check we aren't moving a folder into itself or its descendant
@@ -976,10 +1061,10 @@ export async function handleTool(
         return errorResponse("Cannot move a folder into itself.");
       }
 
-      const item = await ctx.getDrive().files.get({ fileId: data.itemId, fields: 'name, parents', supportsAllDrives: true });
+      const item = await drive.files.get({ fileId: data.itemId, fields: 'name, parents', supportsAllDrives: true });
 
       // Perform move
-      await ctx.getDrive().files.update({
+      await drive.files.update({
         fileId: data.itemId,
         addParents: destinationFolderId,
         removeParents: item.data.parents?.join(',') || '',
@@ -988,7 +1073,7 @@ export async function handleTool(
       });
 
       // Get the destination folder name for a nice response
-      const destinationFolder = await ctx.getDrive().files.get({
+      const destinationFolder = await drive.files.get({
         fileId: destinationFolderId,
         fields: 'name',
         supportsAllDrives: true
@@ -1009,9 +1094,10 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       // Get original file info
-      const originalFile = await ctx.getDrive().files.get({
+      const originalFile = await drive.files.get({
         fileId: data.fileId,
         fields: 'name,parents',
         supportsAllDrives: true
@@ -1022,13 +1108,13 @@ export async function handleTool(
       };
 
       if (data.parentFolderId) {
-        const resolvedParentId = await ctx.resolveFolderId(data.parentFolderId);
+        const resolvedParentId = await ctx.resolveFolderId(data.parentFolderId, drive);
         copyMetadata.parents = [resolvedParentId];
       } else if (originalFile.data.parents) {
         copyMetadata.parents = originalFile.data.parents;
       }
 
-      const response = await ctx.getDrive().files.copy({
+      const response = await drive.files.copy({
         fileId: data.fileId,
         requestBody: copyMetadata,
         fields: 'id,name,webViewLink,parents',
@@ -1047,11 +1133,12 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const parentId = await ctx.resolveFolderId(data.parentFolderId);
+      const parentId = await ctx.resolveFolderId(data.parentFolderId, drive);
 
       // Get target file metadata for default name
-      const targetFile = await ctx.getDrive().files.get({
+      const targetFile = await drive.files.get({
         fileId: data.targetFileId,
         fields: 'id, name, mimeType',
         supportsAllDrives: true
@@ -1059,7 +1146,7 @@ export async function handleTool(
 
       const shortcutName = data.shortcutName || targetFile.data.name || 'Shortcut';
 
-      const shortcut = await ctx.getDrive().files.create({
+      const shortcut = await drive.files.create({
         requestBody: {
           name: shortcutName,
           mimeType: SHORTCUT_MIME_TYPE,
@@ -1093,8 +1180,9 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const fileInfo = await ctx.getDrive().files.get({
+      const fileInfo = await drive.files.get({
         fileId: data.fileId,
         fields: 'id, name, contentRestrictions',
         supportsAllDrives: true
@@ -1111,7 +1199,7 @@ export async function handleTool(
         };
       }
 
-      await ctx.getDrive().files.update({
+      await drive.files.update({
         fileId: data.fileId,
         requestBody: {
           contentRestrictions: [{
@@ -1140,8 +1228,9 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const fileInfo = await ctx.getDrive().files.get({
+      const fileInfo = await drive.files.get({
         fileId: data.fileId,
         fields: 'id, name, contentRestrictions',
         supportsAllDrives: true
@@ -1158,7 +1247,7 @@ export async function handleTool(
         };
       }
 
-      await ctx.getDrive().files.update({
+      await drive.files.update({
         fileId: data.fileId,
         requestBody: {
           contentRestrictions: [{ readOnly: false }]
@@ -1183,6 +1272,7 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       // Validate local file exists
       if (!existsSync(data.localPath)) {
@@ -1193,7 +1283,7 @@ export async function handleTool(
       const fileName = data.name || data.localPath.split(/[\\/]/).pop() || 'upload';
       const ext = fileName.split('.').pop()?.toLowerCase() || '';
       const detectedMime = data.mimeType || BINARY_MIME_TYPES[ext] || 'application/octet-stream';
-      const parentId = await ctx.resolveFolderId(data.parentFolderId);
+      const parentId = await ctx.resolveFolderId(data.parentFolderId, drive);
 
       // Google Workspace conversion mapping
       const GOOGLE_FORMAT_MAP: Record<string, string> = {
@@ -1226,7 +1316,7 @@ export async function handleTool(
         requestBody.mimeType = targetMimeType;
       }
 
-      const file = await ctx.getDrive().files.create({
+      const file = await drive.files.create({
         requestBody,
         media: {
           mimeType: detectedMime,
@@ -1258,7 +1348,8 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const data = validation.data;
-      const downloadResult = await downloadDriveFile(ctx.getDrive(), data, ctx.log);
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
+      const downloadResult = await downloadDriveFile(drive, data, ctx.log);
 
       return {
         content: [{
@@ -1280,8 +1371,9 @@ export async function handleTool(
       const validation = ListPermissionsSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const response = await ctx.getDrive().permissions.list({
+      const response = await drive.permissions.list({
         fileId: data.fileId,
         fields: 'permissions(id,type,role,emailAddress,domain,displayName,permissionDetails(inherited,inheritedFrom,permissionType))',
         supportsAllDrives: true,
@@ -1309,8 +1401,9 @@ export async function handleTool(
       const validation = AddPermissionSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const response = await ctx.getDrive().permissions.create({
+      const response = await drive.permissions.create({
         fileId: data.fileId,
         requestBody: {
           type: data.type,
@@ -1330,8 +1423,9 @@ export async function handleTool(
       const validation = UpdatePermissionSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const response = await ctx.getDrive().permissions.update({
+      const response = await drive.permissions.update({
         fileId: data.fileId,
         permissionId: data.permissionId,
         requestBody: { role: data.role },
@@ -1346,10 +1440,11 @@ export async function handleTool(
       const validation = RemovePermissionSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       let permissionId: string | undefined = data.permissionId;
       if (!permissionId && data.emailAddress) {
-        const listed = await ctx.getDrive().permissions.list({
+        const listed = await drive.permissions.list({
           fileId: data.fileId,
           fields: 'permissions(id,type,emailAddress)',
           supportsAllDrives: true,
@@ -1367,7 +1462,7 @@ export async function handleTool(
         return errorResponse("Could not resolve a permission ID to remove");
       }
 
-      await ctx.getDrive().permissions.delete({
+      await drive.permissions.delete({
         fileId: data.fileId,
         permissionId,
         supportsAllDrives: true,
@@ -1380,9 +1475,10 @@ export async function handleTool(
       const validation = ShareFileSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       // Idempotent behavior: update existing permission for the same principal instead of creating duplicates.
-      const existing = await ctx.getDrive().permissions.list({
+      const existing = await drive.permissions.list({
         fileId: data.fileId,
         fields: 'permissions(id,type,emailAddress,role)',
         supportsAllDrives: true,
@@ -1400,7 +1496,7 @@ export async function handleTool(
           };
         }
 
-        const updated = await ctx.getDrive().permissions.update({
+        const updated = await drive.permissions.update({
           fileId: data.fileId,
           permissionId: existingPerm.id,
           requestBody: { role: data.role },
@@ -1414,7 +1510,7 @@ export async function handleTool(
         };
       }
 
-      const response = await ctx.getDrive().permissions.create({
+      const response = await drive.permissions.create({
         fileId: data.fileId,
         requestBody: {
           type: 'user',
@@ -1437,8 +1533,9 @@ export async function handleTool(
       const validation = ConvertPdfToGoogleDocSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const source = await ctx.getDrive().files.get({
+      const source = await drive.files.get({
         fileId: data.fileId,
         fields: 'id,name,mimeType,parents',
         supportsAllDrives: true,
@@ -1449,7 +1546,7 @@ export async function handleTool(
       }
 
       const parentId = data.parentFolderId || source.data.parents?.[0];
-      const converted = await ctx.getDrive().files.copy({
+      const converted = await drive.files.copy({
         fileId: data.fileId,
         requestBody: {
           name: data.newName || `${source.data.name || 'Converted PDF'} (Doc)`,
@@ -1467,8 +1564,9 @@ export async function handleTool(
       const validation = BulkConvertFolderPdfsSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const list = await ctx.getDrive().files.list({
+      const list = await drive.files.list({
         q: `'${data.folderId}' in parents and mimeType='application/pdf' and trashed=false`,
         pageSize: data.maxResults,
         fields: 'files(id,name,mimeType)',
@@ -1482,7 +1580,7 @@ export async function handleTool(
       // Sequential processing is intentional — parallel copies trigger Google API rate limits.
       for (const f of files) {
         try {
-          const converted = await ctx.getDrive().files.copy({
+          const converted = await drive.files.copy({
             fileId: f.id!,
             requestBody: {
               name: `${f.name || 'Converted PDF'} (Doc)`,
@@ -1512,13 +1610,14 @@ export async function handleTool(
       const validation = UploadPdfWithSplitSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       if (!existsSync(data.localPath)) return errorResponse(`File not found: ${data.localPath}`);
-      const parentId = await ctx.resolveFolderId(data.parentFolderId);
+      const parentId = await ctx.resolveFolderId(data.parentFolderId, drive);
 
       if (!data.split) {
         const fileName = data.namePrefix || basename(data.localPath) || 'upload.pdf';
-        const uploaded = await ctx.getDrive().files.create({
+        const uploaded = await drive.files.create({
           requestBody: { name: fileName, parents: [parentId] },
           media: { mimeType: 'application/pdf', body: createReadStream(data.localPath) },
           fields: 'id,name,webViewLink',
@@ -1544,7 +1643,7 @@ export async function handleTool(
           const partPath = splitResult.files[i];
           const partName = `${baseName}-part-${i + 1}.pdf`;
 
-          const uploaded = await ctx.getDrive().files.create({
+          const uploaded = await drive.files.create({
             requestBody: { name: partName, parents: [parentId] },
             media: { mimeType: 'application/pdf', body: createReadStream(partPath) },
             fields: 'id,name,webViewLink',
@@ -1573,8 +1672,9 @@ export async function handleTool(
       const validation = GetRevisionsSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
-      const response = await ctx.getDrive().revisions.list({
+      const response = await drive.revisions.list({
         fileId: data.fileId,
         pageSize: data.pageSize,
         pageToken: data.pageToken,
@@ -1606,6 +1706,7 @@ export async function handleTool(
       const validation = RestoreRevisionSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       if (!data.confirm) {
         return errorResponse('Refusing restore: set confirm=true to restore a revision.');
@@ -1613,7 +1714,7 @@ export async function handleTool(
 
       try {
         // Get current file metadata to determine restore strategy
-        const current = await ctx.getDrive().files.get({
+        const current = await drive.files.get({
           fileId: data.fileId,
           fields: 'name,mimeType',
           supportsAllDrives: true,
@@ -1628,7 +1729,7 @@ export async function handleTool(
         if (isWorkspaceFile) {
           // Workspace files don't support revisions.get with alt=media.
           // Use the revision's exportLinks to fetch content in an editable format.
-          const revision = await ctx.getDrive().revisions.get({
+          const revision = await drive.revisions.get({
             fileId: data.fileId,
             revisionId: data.revisionId,
             fields: 'id,exportLinks',
@@ -1654,11 +1755,11 @@ export async function handleTool(
           uploadMimeType = selectedMime;
 
           // Fetch revision content from the export link using authenticated request
-          const exportResponse = await ctx.authClient.request({ url: exportLinks[selectedMime], responseType: 'stream' });
+          const exportResponse = await (await ctx.getAuthClientForAccount(data.account ?? '')).request({ url: exportLinks[selectedMime], responseType: 'stream' });
           revisionBody = exportResponse.data;
         } else {
           // For binary files, download the revision content directly
-          const revision = await ctx.getDrive().revisions.get(
+          const revision = await drive.revisions.get(
             { fileId: data.fileId, revisionId: data.revisionId, alt: 'media' },
             { responseType: 'stream' },
           );
@@ -1666,7 +1767,7 @@ export async function handleTool(
           uploadMimeType = fileMimeType || 'application/octet-stream';
         }
 
-        await ctx.getDrive().files.update({
+        await drive.files.update({
           fileId: data.fileId,
           media: {
             mimeType: uploadMimeType,
@@ -1693,23 +1794,28 @@ export async function handleTool(
     }
 
     case "authGetStatus": {
+      const validation = AuthGetStatusSchema.safeParse(args);
+      if (!validation.success) return errorResponse(validation.error.errors[0].message);
+      const { account } = validation.data;
+
       const tokenPath = getSecureTokenPath();
       const tokenFileExists = existsSync(tokenPath);
-      let scopeStatus: ReturnType<typeof resolveScopeStatus>;
+      let scopeStatus: Awaited<ReturnType<typeof resolveScopeStatus>>;
       try {
-        scopeStatus = resolveScopeStatus(ctx);
+        scopeStatus = await resolveScopeStatus(ctx, account ?? '');
       } catch (e: unknown) {
         return errorResponse(`Invalid scope configuration: ${e instanceof Error ? e.message : String(e)}`);
       }
       const { requestedScopes, grantedScopes, missingScopes } = scopeStatus;
-      const expiryDate = ctx.authClient?.credentials?.expiry_date as number | undefined;
+      const authClient = await ctx.getAuthClientForAccount(account ?? '');
+      const expiryDate = authClient?.credentials?.expiry_date as number | undefined;
       const expiresInSec = expiryDate ? Math.floor((expiryDate - Date.now()) / 1000) : null;
 
       const payload = {
         tokenFilePath: tokenPath,
         tokenFileExists,
-        hasAccessToken: !!ctx.authClient?.credentials?.access_token,
-        hasRefreshToken: !!ctx.authClient?.credentials?.refresh_token,
+        hasAccessToken: !!authClient?.credentials?.access_token,
+        hasRefreshToken: !!authClient?.credentials?.refresh_token,
         expiryDate: expiryDate || null,
         expiresInSec,
         requestedScopes,
@@ -1734,9 +1840,13 @@ export async function handleTool(
     }
 
     case "authListScopes": {
-      let scopeStatus: ReturnType<typeof resolveScopeStatus>;
+      const validation = AuthListScopesSchema.safeParse(args);
+      if (!validation.success) return errorResponse(validation.error.errors[0].message);
+      const { account } = validation.data;
+
+      let scopeStatus: Awaited<ReturnType<typeof resolveScopeStatus>>;
       try {
-        scopeStatus = resolveScopeStatus(ctx);
+        scopeStatus = await resolveScopeStatus(ctx, account ?? '');
       } catch (e: unknown) {
         return errorResponse(`Invalid scope configuration: ${e instanceof Error ? e.message : String(e)}`);
       }
@@ -1745,8 +1855,9 @@ export async function handleTool(
         Object.entries(SCOPE_PRESETS).map(([k, v]) => [k, v.map((s) => SCOPE_ALIASES[s] || s)]),
       );
 
+      const authClient = await ctx.getAuthClientForAccount(account ?? '');
       let text = `Scopes:\n${JSON.stringify({ requestedScopes, grantedScopes, missingScopes, presets: presetsResolved }, null, 2)}`;
-      if (grantedScopes.length === 0 && !!ctx.authClient?.credentials?.access_token) {
+      if (grantedScopes.length === 0 && !!authClient?.credentials?.access_token) {
         text += '\nNote: granted scopes may appear empty when the token was loaded from disk. This does not necessarily indicate missing permissions.';
       }
 
@@ -1760,18 +1871,19 @@ export async function handleTool(
       const validation = AuthTestFileAccessSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const data = validation.data;
+      const drive = await ctx.getDriveForAccount(data.account ?? '');
 
       try {
         let check: { mode: string; [key: string]: unknown };
         if (data.fileId) {
-          const file = await ctx.getDrive().files.get({
+          const file = await drive.files.get({
             fileId: data.fileId,
             fields: 'id,name,mimeType,permissions',
             supportsAllDrives: true,
           });
           check = { mode: 'file', fileId: file.data.id, name: file.data.name, mimeType: file.data.mimeType };
         } else {
-          const list = await ctx.getDrive().files.list({
+          const list = await drive.files.list({
             pageSize: 1,
             fields: 'files(id,name,mimeType)',
             includeItemsFromAllDrives: true,

@@ -10,6 +10,7 @@ import { uploadImageToDrive, deleteDriveFile } from '../utils/driveImageUpload.j
 // ---------------------------------------------------------------------------
 
 const CreateGoogleSlidesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   name: z.string().min(1, "Presentation name is required"),
   slides: z.array(z.object({
     title: z.string(),
@@ -19,6 +20,7 @@ const CreateGoogleSlidesSchema = z.object({
 });
 
 const UpdateGoogleSlidesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slides: z.array(z.object({
     title: z.string(),
@@ -27,11 +29,13 @@ const UpdateGoogleSlidesSchema = z.object({
 });
 
 const GetGoogleSlidesContentSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideIndex: z.number().min(0).optional()
 });
 
 const FormatGoogleSlidesTextSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   objectId: z.string().min(1, "Object ID is required"),
   startIndex: z.number().min(0).optional(),
@@ -50,6 +54,7 @@ const FormatGoogleSlidesTextSchema = z.object({
 });
 
 const FormatGoogleSlidesParagraphSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   objectId: z.string().min(1, "Object ID is required"),
   alignment: z.enum(['START', 'CENTER', 'END', 'JUSTIFIED']).optional(),
@@ -58,6 +63,7 @@ const FormatGoogleSlidesParagraphSchema = z.object({
 });
 
 const StyleGoogleSlidesShapeSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   objectId: z.string().min(1, "Shape object ID is required"),
   backgroundColor: z.object({
@@ -76,6 +82,7 @@ const StyleGoogleSlidesShapeSchema = z.object({
 });
 
 const SetGoogleSlidesBackgroundSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   pageObjectIds: z.array(z.string()).min(1, "At least one page object ID is required"),
   backgroundColor: z.object({
@@ -87,6 +94,7 @@ const SetGoogleSlidesBackgroundSchema = z.object({
 });
 
 const CreateGoogleSlidesTextBoxSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   pageObjectId: z.string().min(1, "Page object ID is required"),
   text: z.string().min(1, "Text content is required"),
@@ -100,6 +108,7 @@ const CreateGoogleSlidesTextBoxSchema = z.object({
 });
 
 const CreateGoogleSlidesShapeSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   pageObjectId: z.string().min(1, "Page object ID is required"),
   shapeType: z.enum(['RECTANGLE', 'ELLIPSE', 'DIAMOND', 'TRIANGLE', 'STAR', 'ROUND_RECTANGLE', 'ARROW']),
@@ -116,33 +125,39 @@ const CreateGoogleSlidesShapeSchema = z.object({
 });
 
 const GetGoogleSlidesSpeakerNotesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideIndex: z.number().min(0, "Slide index must be non-negative")
 });
 
 const UpdateGoogleSlidesSpeakerNotesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideIndex: z.number().min(0, "Slide index must be non-negative"),
   notes: z.string()
 });
 
 const DeleteGoogleSlideSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideObjectId: z.string().min(1, "Slide object ID is required")
 });
 
 const DuplicateSlideSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideObjectId: z.string().min(1, "Slide object ID is required")
 });
 
 const ReorderSlidesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideObjectIds: z.array(z.string().min(1)).min(1, "At least one slide object ID is required"),
   insertionIndex: z.number().int().min(0)
 });
 
 const ReplaceAllTextInSlidesSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   containsText: z.string().min(1, "containsText is required"),
   replaceText: z.string(),
@@ -150,6 +165,7 @@ const ReplaceAllTextInSlidesSchema = z.object({
 });
 
 const ExportSlideThumbnailSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideObjectId: z.string().min(1, "Slide object ID is required"),
   mimeType: z.enum(["PNG", "JPEG"]).optional().default("PNG"),
@@ -157,6 +173,7 @@ const ExportSlideThumbnailSchema = z.object({
 });
 
 const InsertSlidesImageFromUrlSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   pageObjectId: z.string().min(1, "Slide/page object ID is required"),
   imageUrl: z.string().url("A valid image URL is required"),
@@ -167,6 +184,7 @@ const InsertSlidesImageFromUrlSchema = z.object({
 });
 
 const MoveSlideElementSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   objectId: z.string().min(1, "Element object ID is required"),
   x: z.number().optional(),
@@ -176,16 +194,19 @@ const MoveSlideElementSchema = z.object({
 });
 
 const DeleteSlideElementSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   objectId: z.string().min(1, "Element object ID is required"),
 });
 
 const GetSlideElementInfoSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   slideObjectId: z.string().optional(),
 });
 
 const InsertSlidesLocalImageSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   presentationId: z.string().min(1, "Presentation ID is required"),
   pageObjectId: z.string().min(1, "Slide/page object ID is required"),
   localImagePath: z.string().min(1, "Local image path is required"),
@@ -200,7 +221,7 @@ const InsertSlidesLocalImageSchema = z.object({
 // ---------------------------------------------------------------------------
 
 async function insertImageIntoSlide(
-  ctx: ToolContext,
+  slidesService: slides_v1.Slides,
   presentationId: string,
   pageObjectId: string,
   imageUrl: string,
@@ -209,7 +230,6 @@ async function insertImageIntoSlide(
   width?: number,
   height?: number,
 ): Promise<ToolResult> {
-  const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
   const objectId = `img_${uuidv4().substring(0, 8)}`;
 
   const elementProperties: slides_v1.Schema$PageElementProperties = {
@@ -256,6 +276,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         name: { type: "string", description: "Presentation name" },
         slides: {
           type: "array",
@@ -279,6 +300,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slides: {
           type: "array",
@@ -301,6 +323,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideIndex: { type: "number", description: "Specific slide index (optional)" }
       },
@@ -313,6 +336,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         objectId: { type: "string", description: "Object ID of the text element" },
         startIndex: { type: "number", description: "Start index (0-based)" },
@@ -342,6 +366,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         objectId: { type: "string", description: "Object ID of the text element" },
         alignment: {
@@ -365,6 +390,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         objectId: { type: "string", description: "Shape object ID" },
         backgroundColor: {
@@ -402,6 +428,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         pageObjectIds: {
           type: "array",
@@ -428,6 +455,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         pageObjectId: { type: "string", description: "Slide ID" },
         text: { type: "string", description: "Text content" },
@@ -448,6 +476,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         pageObjectId: { type: "string", description: "Slide ID" },
         shapeType: {
@@ -479,6 +508,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideIndex: { type: "number", description: "Slide index (0-based)" }
       },
@@ -491,6 +521,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideIndex: { type: "number", description: "Slide index (0-based)" },
         notes: { type: "string", description: "Speaker notes content" }
@@ -504,6 +535,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideObjectId: { type: "string", description: "Slide object ID" }
       },
@@ -516,6 +548,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideObjectId: { type: "string", description: "Slide object ID" }
       },
@@ -528,6 +561,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideObjectIds: { type: "array", items: { type: "string" }, description: "Slide object IDs to move" },
         insertionIndex: { type: "number", description: "Target insertion index" }
@@ -541,6 +575,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         containsText: { type: "string", description: "Text to find" },
         replaceText: { type: "string", description: "Replacement text" },
@@ -555,6 +590,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideObjectId: { type: "string", description: "Slide object ID" },
         mimeType: { type: "string", enum: ["PNG", "JPEG"], description: "Thumbnail MIME type" },
@@ -569,6 +605,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         pageObjectId: { type: "string", description: "Slide/page object ID to insert the image into" },
         imageUrl: { type: "string", description: "Publicly accessible URL of the image" },
@@ -586,6 +623,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         slideObjectId: { type: "string", description: "Slide object ID (omit to get all slides)" }
       },
@@ -598,6 +636,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         objectId: { type: "string", description: "Element object ID to move/resize" },
         x: { type: "number", description: "New X position in EMU" },
@@ -614,6 +653,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         objectId: { type: "string", description: "Element object ID to delete" }
       },
@@ -626,6 +666,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         presentationId: { type: "string", description: "Presentation ID" },
         pageObjectId: { type: "string", description: "Slide/page object ID to insert the image into" },
         localImagePath: { type: "string", description: "Absolute path to the local image file" },
@@ -657,10 +698,14 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const parentFolderId = await ctx.resolveFolderId(a.parentFolderId);
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
+      const drive = await ctx.getDriveForAccount(a.account ?? '');
+
+      const parentFolderId = await ctx.resolveFolderId(a.parentFolderId, drive);
 
       // Check if presentation already exists
-      const existingFileId = await ctx.checkFileExists(a.name, parentFolderId);
+      const existingFileId = await ctx.checkFileExists(a.name, drive, parentFolderId);
       if (existingFileId) {
         return errorResponse(
           `A presentation named "${a.name}" already exists in this location. ` +
@@ -668,12 +713,11 @@ export async function handleTool(
         );
       }
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
       const presentation = await slidesService.presentations.create({
         requestBody: { title: a.name },
       });
 
-      await ctx.getDrive().files.update({
+      await drive.files.update({
         fileId: presentation.data.presentationId!,
         addParents: parentFolderId,
         removeParents: 'root',
@@ -736,7 +780,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
 
       // Get current presentation details
       const currentPresentation = await slidesService.presentations.get({
@@ -908,7 +953,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const presentation = await slidesService.presentations.get({
         presentationId: a.presentationId
       });
@@ -968,7 +1014,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const textStyle: any = {};
       const fields: string[] = [];
 
@@ -1059,7 +1106,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const requests: any[] = [];
 
       if (a.alignment) {
@@ -1128,7 +1176,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const shapeProperties: any = {};
       const fields: string[] = [];
 
@@ -1214,7 +1263,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const requests = a.pageObjectIds.map(pageObjectId => ({
         updatePageProperties: {
           objectId: pageObjectId,
@@ -1254,7 +1304,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const elementId = `textBox_${uuidv4().substring(0, 8)}`;
 
       const requests: any[] = [
@@ -1340,7 +1391,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const elementId = `shape_${uuidv4().substring(0, 8)}`;
 
       const createRequest: any = {
@@ -1408,7 +1460,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
 
       // Get the presentation to access the slide
       const presentation = await slidesService.presentations.get({
@@ -1484,7 +1537,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
 
       // Get the presentation to access the slide
       const presentation = await slidesService.presentations.get({
@@ -1539,7 +1593,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       await slidesService.presentations.batchUpdate({
         presentationId: a.presentationId,
         requestBody: {
@@ -1558,7 +1613,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const response = await slidesService.presentations.batchUpdate({
         presentationId: a.presentationId,
         requestBody: {
@@ -1578,7 +1634,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       await slidesService.presentations.batchUpdate({
         presentationId: a.presentationId,
         requestBody: {
@@ -1602,7 +1659,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const response = await slidesService.presentations.batchUpdate({
         presentationId: a.presentationId,
         requestBody: {
@@ -1630,7 +1688,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       const response = await slidesService.presentations.pages.getThumbnail({
         presentationId: a.presentationId,
         pageObjectId: a.slideObjectId,
@@ -1652,7 +1711,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
 
       // Page size lives on the presentation; grab just that field.
       const sizeOnly = await slidesService.presentations.get({
@@ -1713,7 +1773,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
 
       // Field-masked fetch: we only need each element's objectId/transform/size.
       const pres = await slidesService.presentations.get({
@@ -1784,7 +1845,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const slidesService = ctx.google.slides({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
       await slidesService.presentations.batchUpdate({
         presentationId: a.presentationId,
         requestBody: {
@@ -1802,7 +1864,9 @@ export async function handleTool(
       const validation = InsertSlidesImageFromUrlSchema.safeParse(args);
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
-      return insertImageIntoSlide(ctx, a.presentationId, a.pageObjectId, a.imageUrl, a.x, a.y, a.width, a.height);
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
+      return insertImageIntoSlide(slidesService, a.presentationId, a.pageObjectId, a.imageUrl, a.x, a.y, a.width, a.height);
     }
 
     case "insertSlidesLocalImage": {
@@ -1810,25 +1874,29 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const slidesService = ctx.google.slides({ version: 'v1', auth: authClient });
+      const drive = await ctx.getDriveForAccount(a.account ?? '');
+
       // Upload briefly as public so the Slides API can fetch the bytes.
-      const { fileId, webContentLink } = await uploadImageToDrive(ctx, a.localImagePath, {
+      const { fileId, webContentLink } = await uploadImageToDrive(drive, a.localImagePath, {
         makePublic: true,
       });
       try {
         const result = await insertImageIntoSlide(
-          ctx, a.presentationId, a.pageObjectId, webContentLink,
+          slidesService, a.presentationId, a.pageObjectId, webContentLink,
           a.x, a.y, a.width, a.height,
         );
         // Slides stores its own copy once createImage returns, so the intermediary
         // Drive file is no longer referenced. Delete it (which also removes the
         // public permission we just granted).
-        await deleteDriveFile(ctx, fileId).catch((err) =>
+        await deleteDriveFile(drive, fileId).catch((err) =>
           ctx.log(`insertSlidesLocalImage: failed to delete intermediary Drive file ${fileId}`, err),
         );
         return result;
       } catch (err) {
         // On embed failure, still try to clean up the uploaded file.
-        await deleteDriveFile(ctx, fileId).catch(() => {});
+        await deleteDriveFile(drive, fileId).catch(() => {});
         throw err;
       }
     }

@@ -8,6 +8,7 @@ import { parseA1Range, convertA1ToGridRange, escapeDriveQuery, type GridRange } 
 // ---------------------------------------------------------------------------
 
 const CreateGoogleSheetSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   name: z.string().min(1, "Sheet name is required"),
   data: z.array(z.array(z.string())),
   parentFolderId: z.string().optional(),
@@ -15,6 +16,7 @@ const CreateGoogleSheetSchema = z.object({
 });
 
 const UpdateGoogleSheetSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   data: z.array(z.array(z.string())),
@@ -22,11 +24,13 @@ const UpdateGoogleSheetSchema = z.object({
 });
 
 const GetGoogleSheetContentSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required")
 });
 
 const FormatGoogleSheetCellsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   backgroundColor: z.object({
@@ -40,6 +44,7 @@ const FormatGoogleSheetCellsSchema = z.object({
 });
 
 const FormatGoogleSheetTextSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   bold: z.boolean().optional(),
@@ -56,6 +61,7 @@ const FormatGoogleSheetTextSchema = z.object({
 });
 
 const FormatGoogleSheetNumbersSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   pattern: z.string().min(1, "Pattern is required"),
@@ -63,6 +69,7 @@ const FormatGoogleSheetNumbersSchema = z.object({
 });
 
 const SetGoogleSheetBordersSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   style: z.enum(["SOLID", "DASHED", "DOTTED", "DOUBLE"]),
@@ -81,12 +88,14 @@ const SetGoogleSheetBordersSchema = z.object({
 });
 
 const MergeGoogleSheetCellsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   mergeType: z.enum(["MERGE_ALL", "MERGE_COLUMNS", "MERGE_ROWS"])
 });
 
 const AddGoogleSheetConditionalFormatSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   condition: z.object({
@@ -111,10 +120,12 @@ const AddGoogleSheetConditionalFormatSchema = z.object({
 });
 
 const GetSpreadsheetInfoSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required")
 });
 
 const AppendSpreadsheetRowsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   values: z.array(z.array(z.any())),
@@ -122,31 +133,37 @@ const AppendSpreadsheetRowsSchema = z.object({
 });
 
 const AddSpreadsheetSheetSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   sheetTitle: z.string().min(1, "Sheet title is required")
 });
 
 const AddSheetSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   title: z.string().min(1, "Sheet title is required")
 });
 
 const ListSheetsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required")
 });
 
 const RenameSheetSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   sheetId: z.number().int(),
   newTitle: z.string().min(1, "New title is required")
 });
 
 const DeleteSheetSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   sheetId: z.number().int()
 });
 
 const AddDataValidationSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   conditionType: z.enum(["ONE_OF_LIST", "NUMBER_GREATER", "NUMBER_LESS", "TEXT_CONTAINS"]),
@@ -156,6 +173,7 @@ const AddDataValidationSchema = z.object({
 });
 
 const ProtectRangeSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   range: z.string().min(1, "Range is required"),
   description: z.string().optional(),
@@ -163,12 +181,14 @@ const ProtectRangeSchema = z.object({
 });
 
 const AddNamedRangeSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   spreadsheetId: z.string().min(1, "Spreadsheet ID is required"),
   name: z.string().min(1, "Name is required"),
   range: z.string().min(1, "Range is required")
 });
 
 const ListGoogleSheetsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   maxResults: z.number().int().min(1).max(100).optional().default(20),
   query: z.string().optional(),
   orderBy: z.enum(["name", "modifiedTime", "createdTime"]).optional().default("modifiedTime")
@@ -185,6 +205,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         name: { type: "string", description: "Sheet name" },
         data: {
           type: "array",
@@ -207,6 +228,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Sheet ID" },
         range: { type: "string", description: "Range to update (e.g., 'Sheet1!A1:C10')" },
         data: {
@@ -229,6 +251,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "Range to get (e.g., 'Sheet1!A1:C10')" }
       },
@@ -241,6 +264,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "Range to format (e.g., 'A1:C10')" },
         backgroundColor: {
@@ -277,6 +301,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "Range to format (e.g., 'A1:C10')" },
         bold: { type: "boolean", description: "Make text bold" },
@@ -304,6 +329,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "Range to format (e.g., 'A1:C10')" },
         pattern: {
@@ -325,6 +351,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "Range to format (e.g., 'A1:C10')" },
         style: {
@@ -358,6 +385,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "Range to merge (e.g., 'A1:C3')" },
         mergeType: {
@@ -375,6 +403,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "Range to apply formatting (e.g., 'A1:C10')" },
         condition: {
@@ -427,6 +456,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "The ID of the Google Spreadsheet (from the URL)" }
       },
       required: ["spreadsheetId"]
@@ -438,6 +468,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "The ID of the Google Spreadsheet (from the URL)" },
         range: { type: "string", description: "A1 notation range indicating where to append (e.g., 'A1' or 'Sheet1!A1'). Data will be appended starting from this range." },
         values: {
@@ -466,6 +497,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "The ID of the Google Spreadsheet (from the URL)" },
         sheetTitle: { type: "string", description: "Title for the new sheet/tab" }
       },
@@ -478,6 +510,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         title: { type: "string", description: "Title for the new sheet/tab" }
       },
@@ -490,6 +523,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" }
       },
       required: ["spreadsheetId"]
@@ -501,6 +535,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         sheetId: { type: "number", description: "Sheet ID" },
         newTitle: { type: "string", description: "New title" }
@@ -514,6 +549,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         sheetId: { type: "number", description: "Sheet ID" }
       },
@@ -526,6 +562,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "A1 range" },
         conditionType: { type: "string", enum: ["ONE_OF_LIST", "NUMBER_GREATER", "NUMBER_LESS", "TEXT_CONTAINS"], description: "Validation condition type" },
@@ -542,6 +579,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         range: { type: "string", description: "A1 range" },
         description: { type: "string", description: "Protection description" },
@@ -556,6 +594,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         spreadsheetId: { type: "string", description: "Spreadsheet ID" },
         name: { type: "string", description: "Named range name" },
         range: { type: "string", description: "A1 range" }
@@ -569,6 +608,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         maxResults: { type: "number", description: "Maximum number of spreadsheets to return (1-100)", default: 20 },
         query: { type: "string", description: "Search query to filter spreadsheets by name or content" },
         orderBy: { type: "string", description: "Sort order for results", enum: ["name", "modifiedTime", "createdTime"], default: "modifiedTime" }
@@ -617,17 +657,20 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const parentFolderId = await ctx.resolveFolderId(a.parentFolderId);
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
+      const drive = await ctx.getDriveForAccount(a.account ?? '');
+
+      const parentFolderId = await ctx.resolveFolderId(a.parentFolderId, drive);
 
       // Check if spreadsheet already exists
-      const existingFileId = await ctx.checkFileExists(a.name, parentFolderId);
+      const existingFileId = await ctx.checkFileExists(a.name, drive, parentFolderId);
       if (existingFileId) {
         return errorResponse(
           `A spreadsheet named "${a.name}" already exists in this location. ` +
           `To update it, use updateGoogleSheet with spreadsheetId: ${existingFileId}`
         );
       }
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
 
       // Create spreadsheet with initial sheet
       const spreadsheet = await sheets.spreadsheets.create({
@@ -646,7 +689,7 @@ export async function handleTool(
         }
       });
 
-      await ctx.getDrive().files.update({
+      await drive.files.update({
         fileId: spreadsheet.data.spreadsheetId || '',
         addParents: parentFolderId,
         removeParents: 'root',
@@ -675,7 +718,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       await sheets.spreadsheets.values.update({
         spreadsheetId: a.spreadsheetId,
         range: a.range,
@@ -696,7 +740,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: a.spreadsheetId,
         range: a.range
@@ -726,7 +771,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
 
       // Parse the range to get sheet ID and grid range
       const rangeData = await sheets.spreadsheets.get({
@@ -790,7 +836,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
 
       // Get sheet information
       const rangeData = await sheets.spreadsheets.get({
@@ -871,7 +918,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
 
       const rangeData = await sheets.spreadsheets.get({
         spreadsheetId: a.spreadsheetId,
@@ -922,7 +970,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
 
       const rangeData = await sheets.spreadsheets.get({
         spreadsheetId: a.spreadsheetId,
@@ -979,7 +1028,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
 
       const rangeData = await sheets.spreadsheets.get({
         spreadsheetId: a.spreadsheetId,
@@ -1020,7 +1070,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
 
       const rangeData = await sheets.spreadsheets.get({
         spreadsheetId: a.spreadsheetId,
@@ -1118,7 +1169,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const response = await sheets.spreadsheets.get({
         spreadsheetId: a.spreadsheetId,
         fields: 'spreadsheetId,properties.title,sheets.properties'
@@ -1156,7 +1208,8 @@ export async function handleTool(
       }
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const response = await sheets.spreadsheets.values.append({
         spreadsheetId: a.spreadsheetId,
         range: a.range,
@@ -1186,7 +1239,8 @@ export async function handleTool(
       const spreadsheetId = validation.data.spreadsheetId;
       const sheetTitle = isAlias ? (validation.data as z.infer<typeof AddSheetSchema>).title : (validation.data as z.infer<typeof AddSpreadsheetSheetSchema>).sheetTitle;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(validation.data.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const response = await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         requestBody: {
@@ -1216,7 +1270,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const response = await sheets.spreadsheets.get({
         spreadsheetId: a.spreadsheetId,
         fields: 'sheets.properties(sheetId,title,index,hidden)'
@@ -1236,7 +1291,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: a.spreadsheetId,
         requestBody: {
@@ -1257,7 +1313,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: a.spreadsheetId,
         requestBody: {
@@ -1275,7 +1332,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const gridRange = await resolveGridRange(sheets, a.spreadsheetId, a.range);
       if (typeof gridRange === 'string') return errorResponse(gridRange);
 
@@ -1308,7 +1366,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const gridRange = await resolveGridRange(sheets, a.spreadsheetId, a.range);
       if (typeof gridRange === 'string') return errorResponse(gridRange);
 
@@ -1336,7 +1395,8 @@ export async function handleTool(
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const sheets = ctx.google.sheets({ version: 'v4', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const sheets = ctx.google.sheets({ version: 'v4', auth: authClient });
       const gridRange = await resolveGridRange(sheets, a.spreadsheetId, a.range);
       if (typeof gridRange === 'string') return errorResponse(gridRange);
 
@@ -1365,13 +1425,16 @@ export async function handleTool(
       }
       const a = validation.data;
 
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const drive = await ctx.getDriveForAccount(a.account ?? '');
+
       let queryString = "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false";
       if (a.query) {
         const escapedQuery = escapeDriveQuery(a.query);
         queryString += ` and (name contains '${escapedQuery}' or fullText contains '${escapedQuery}')`;
       }
 
-      const response = await ctx.getDrive().files.list({
+      const response = await drive.files.list({
         q: queryString,
         pageSize: a.maxResults || 20,
         orderBy: a.orderBy === 'name' ? 'name' : a.orderBy,

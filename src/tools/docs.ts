@@ -65,21 +65,18 @@ function findTabById(tabs: any[], targetId: string): any | null {
 }
 
 // Execute batch update for Google Docs
-async function executeBatchUpdate(ctx: ToolContext, documentId: string, requests: any[]): Promise<any> {
+async function executeBatchUpdate(docsService: any, documentId: string, requests: any[]): Promise<any> {
   if (!requests || requests.length === 0) {
     return {};
   }
 
-  const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
-
   try {
-    const response = await docs.documents.batchUpdate({
+    const response = await docsService.documents.batchUpdate({
       documentId: documentId,
       requestBody: { requests },
     });
     return response.data;
   } catch (error: any) {
-    ctx.log('Google Docs batchUpdate error:', error.message);
     if (error.code === 404) throw new Error(`Document not found (ID: ${documentId})`);
     if (error.code === 403) throw new Error(`Permission denied for document (ID: ${documentId})`);
     throw new Error(`Google Docs API Error: ${error.message}`);
@@ -87,8 +84,8 @@ async function executeBatchUpdate(ctx: ToolContext, documentId: string, requests
 }
 
 // Find text in a document and return the range indices
-async function findTextRange(ctx: ToolContext, documentId: string, textToFind: string, instance: number = 1): Promise<{ startIndex: number; endIndex: number } | null> {
-  const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+async function findTextRange(docsService: any, documentId: string, textToFind: string, instance: number = 1): Promise<{ startIndex: number; endIndex: number } | null> {
+  const docs = docsService;
 
   try {
     const res = await docs.documents.get({
@@ -177,15 +174,15 @@ async function findTextRange(ctx: ToolContext, documentId: string, textToFind: s
 
     return null;
   } catch (error: any) {
-    ctx.log('Error finding text in document:', error.message);
+    console.error('Error finding text in document:', error.message);
     if (error.code === 404) throw new Error(`Document not found (ID: ${documentId})`);
     throw new Error(`Failed to search document: ${error.message}`);
   }
 }
 
 // Get paragraph range containing a specific index
-async function getParagraphRange(ctx: ToolContext, documentId: string, indexWithin: number): Promise<{ startIndex: number; endIndex: number } | null> {
-  const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+async function getParagraphRange(docsService: any, documentId: string, indexWithin: number): Promise<{ startIndex: number; endIndex: number } | null> {
+  const docs = docsService;
 
   try {
     const res = await docs.documents.get({
@@ -226,7 +223,7 @@ async function getParagraphRange(ctx: ToolContext, documentId: string, indexWith
 
     return findParagraphInContent(res.data.body.content);
   } catch (error: any) {
-    ctx.log('Error getting paragraph range:', error.message);
+    console.error('Error getting paragraph range:', error.message);
     throw new Error(`Failed to find paragraph: ${error.message}`);
   }
 }
@@ -331,7 +328,7 @@ function buildUpdateParagraphStyleRequest(
 
 // Insert an inline image from a URL
 async function insertInlineImageHelper(
-  ctx: ToolContext,
+  docsService: any,
   documentId: string,
   imageUrl: string,
   index: number,
@@ -359,7 +356,7 @@ async function insertInlineImageHelper(
     };
   }
 
-  return executeBatchUpdate(ctx, documentId, [request]);
+  return executeBatchUpdate(docsService, documentId, [request]);
 }
 
 // Image upload moved to ../utils/driveImageUpload.ts.
@@ -704,23 +701,27 @@ export function matchDocxToDriveComments(
 // ---------------------------------------------------------------------------
 
 const CreateGoogleDocSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   name: z.string().min(1, "Document name is required"),
   content: z.string(),
   parentFolderId: z.string().optional()
 });
 
 const UpdateGoogleDocSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   content: z.string(),
   tabId: z.string().optional()
 });
 
 const GetGoogleDocContentSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   includeFormatting: z.boolean().optional(),
 });
 
 const InsertTextSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   text: z.string().min(1, "Text to insert is required"),
   index: z.number().int().min(1, "Index must be at least 1 (1-based)"),
@@ -728,6 +729,7 @@ const InsertTextSchema = z.object({
 });
 
 const DeleteRangeSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   startIndex: z.number().int().min(1, "Start index must be at least 1"),
   endIndex: z.number().int().min(1, "End index must be at least 1"),
@@ -738,6 +740,7 @@ const DeleteRangeSchema = z.object({
 });
 
 const ReadGoogleDocSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   format: z.enum(['text', 'json', 'markdown']).optional().default('text'),
   maxLength: z.number().int().min(1).optional(),
@@ -745,11 +748,13 @@ const ReadGoogleDocSchema = z.object({
 });
 
 const ListDocumentTabsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   includeContent: z.boolean().optional().default(false)
 });
 
 const ApplyTextStyleSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   startIndex: z.number().int().min(1).optional(),
   endIndex: z.number().int().min(1).optional(),
@@ -767,6 +772,7 @@ const ApplyTextStyleSchema = z.object({
 });
 
 const ApplyParagraphStyleSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   startIndex: z.number().int().min(1).optional(),
   endIndex: z.number().int().min(1).optional(),
@@ -783,6 +789,7 @@ const ApplyParagraphStyleSchema = z.object({
 });
 
 const CreateParagraphBulletsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   startIndex: z.number().int().min(1).optional(),
   endIndex: z.number().int().min(1).optional(),
@@ -807,6 +814,7 @@ const CreateParagraphBulletsSchema = z.object({
 });
 
 const ListCommentsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   includeDeleted: z.boolean().optional(),
   pageSize: z.number().int().min(1).max(100).optional(),
@@ -814,11 +822,13 @@ const ListCommentsSchema = z.object({
 });
 
 const GetCommentSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   commentId: z.string().min(1, "Comment ID is required")
 });
 
 const AddCommentSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   startIndex: z.number().int().min(1, "Start index must be at least 1"),
   endIndex: z.number().int().min(1, "End index must be at least 1"),
@@ -826,6 +836,7 @@ const AddCommentSchema = z.object({
 });
 
 const ReplyToCommentSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   commentId: z.string().min(1, "Comment ID is required"),
   replyText: z.string().min(1, "Reply text is required"),
@@ -833,11 +844,13 @@ const ReplyToCommentSchema = z.object({
 });
 
 const DeleteCommentSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   commentId: z.string().min(1, "Comment ID is required")
 });
 
 const InsertTableSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   rows: z.number().int().min(1, "Must have at least 1 row"),
   columns: z.number().int().min(1, "Must have at least 1 column"),
@@ -845,6 +858,7 @@ const InsertTableSchema = z.object({
 });
 
 const EditTableCellSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   tableStartIndex: z.number().int().min(1, "Table start index is required"),
   rowIndex: z.number().int().min(0, "Row index must be at least 0 (0-based)"),
@@ -857,6 +871,7 @@ const EditTableCellSchema = z.object({
 });
 
 const InsertImageFromUrlSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   imageUrl: z.string().url("Must be a valid URL"),
   index: z.number().int().min(1, "Index must be at least 1 (1-based)"),
@@ -865,6 +880,7 @@ const InsertImageFromUrlSchema = z.object({
 });
 
 const InsertLocalImageSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   localImagePath: z.string().min(1, "Local image path is required"),
   index: z.number().int().min(1, "Index must be at least 1 (1-based)"),
@@ -875,16 +891,19 @@ const InsertLocalImageSchema = z.object({
 });
 
 const ListGoogleDocsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   maxResults: z.number().int().min(1).max(100).optional().default(20).describe("Maximum number of documents to return (1-100)."),
   query: z.string().optional().describe("Search query to filter documents by name or content."),
   orderBy: z.enum(["name", "modifiedTime", "createdTime"]).optional().default("modifiedTime").describe("Sort order for results.")
 });
 
 const GetDocumentInfoSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required")
 });
 
 const FindAndReplaceInDocSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   findText: z.string().min(1, "findText is required"),
   replaceText: z.string(),
@@ -894,17 +913,20 @@ const FindAndReplaceInDocSchema = z.object({
 });
 
 const AddDocumentTabSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   title: z.string().min(1, "Tab title is required"),
 });
 
 const RenameDocumentTabSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   tabId: z.string().min(1, "Tab ID is required"),
   title: z.string().min(1, "Tab title is required"),
 });
 
 const InsertSmartChipSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   index: z.number().int().min(1, "Index must be at least 1"),
   chipType: z.enum(["person"]),
@@ -912,10 +934,12 @@ const InsertSmartChipSchema = z.object({
 });
 
 const ReadSmartChipsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
 });
 
 const CreateFootnoteSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   documentId: z.string().min(1, "Document ID is required"),
   index: z.number().int().min(1, "Index must be at least 1").optional(),
   endOfSegment: z.boolean().optional(),
@@ -935,6 +959,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         name: { type: "string", description: "Doc name" },
         content: { type: "string", description: "Doc content" },
         parentFolderId: { type: "string", description: "Parent folder ID" }
@@ -948,6 +973,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "Doc ID" },
         content: { type: "string", description: "New content" },
         tabId: { type: "string", description: "Optional. Tab ID to replace (from listDocumentTabs). If set, delete+insert run in a single atomic batchUpdate scoped to that tab." }
@@ -961,6 +987,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         text: { type: "string", description: "Text to insert" },
         index: { type: "number", description: "Position to insert at (1-based)" },
@@ -975,6 +1002,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         startIndex: { type: "number", description: "Start index (1-based, inclusive)" },
         endIndex: { type: "number", description: "End index (exclusive)" },
@@ -989,6 +1017,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         format: { type: "string", enum: ["text", "json", "markdown"], description: "Output format (default: text)" },
         maxLength: { type: "number", description: "Maximum characters to return" },
@@ -1003,6 +1032,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         includeContent: { type: "boolean", description: "Include content summary (character count) for each tab" }
       },
@@ -1015,6 +1045,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         startIndex: { type: "number", description: "Start index (1-based) - use with endIndex" },
         endIndex: { type: "number", description: "End index (exclusive) - use with startIndex" },
@@ -1039,6 +1070,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         startIndex: { type: "number", description: "Start index (1-based) - use with endIndex" },
         endIndex: { type: "number", description: "End index (exclusive) - use with startIndex" },
@@ -1062,6 +1094,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         startIndex: { type: "number", description: "Start index (1-based) - use with endIndex" },
         endIndex: { type: "number", description: "End index (exclusive) - use with startIndex" },
@@ -1086,6 +1119,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         startIndex: { type: "number", description: "Start index (1-based) - use with endIndex" },
         endIndex: { type: "number", description: "End index (exclusive) - use with startIndex" },
@@ -1109,6 +1143,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         startIndex: { type: "number", description: "Start index (1-based) - use with endIndex" },
         endIndex: { type: "number", description: "End index (exclusive) - use with startIndex" },
@@ -1125,6 +1160,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         findText: { type: "string", description: "Text to find" },
         replaceText: { type: "string", description: "Replacement text" },
@@ -1141,6 +1177,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         includeDeleted: { type: "boolean", description: "Whether to include deleted comments (default: false)" },
         pageSize: { type: "number", description: "Max comments to return (1-100, default: 100)" },
@@ -1155,6 +1192,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         commentId: { type: "string", description: "The comment ID" }
       },
@@ -1167,6 +1205,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         startIndex: { type: "number", description: "Start index (1-based)" },
         endIndex: { type: "number", description: "End index (exclusive)" },
@@ -1181,6 +1220,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         commentId: { type: "string", description: "The comment ID to reply to" },
         replyText: { type: "string", description: "The reply content" },
@@ -1195,6 +1235,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         commentId: { type: "string", description: "The comment ID to delete" }
       },
@@ -1207,6 +1248,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "Document ID" },
         includeFormatting: { type: "boolean", description: "Include font, style, and color info for each text span (default: false)" },
       },
@@ -1219,6 +1261,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         rows: { type: "number", description: "Number of rows for the new table" },
         columns: { type: "number", description: "Number of columns for the new table" },
@@ -1233,6 +1276,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         tableStartIndex: { type: "number", description: "The starting index of the TABLE element" },
         rowIndex: { type: "number", description: "Row index (0-based)" },
@@ -1252,6 +1296,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         imageUrl: { type: "string", description: "Publicly accessible URL to the image" },
         index: { type: "number", description: "The index (1-based) where the image should be inserted" },
@@ -1267,6 +1312,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The document ID" },
         localImagePath: { type: "string", description: "Absolute path to the local image file" },
         index: { type: "number", description: "The index (1-based) where the image should be inserted" },
@@ -1284,6 +1330,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         maxResults: { type: "integer", description: "Maximum number of documents to return (1-100)." },
         query: { type: "string", description: "Search query to filter documents by name or content." },
         orderBy: { type: "string", enum: ["name", "modifiedTime", "createdTime"], description: "Sort order for results." }
@@ -1297,6 +1344,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "The ID of the Google Document (from the URL)." }
       },
       required: ["documentId"]
@@ -1308,6 +1356,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "Document ID" },
         title: { type: "string", description: "Tab title" }
       },
@@ -1320,6 +1369,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "Document ID" },
         tabId: { type: "string", description: "Tab ID" },
         title: { type: "string", description: "New tab title" }
@@ -1333,6 +1383,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "Document ID" },
         index: { type: "number", description: "Insertion index (1-based)" },
         chipType: { type: "string", enum: ["person"], description: "Smart chip type (only 'person' is supported)" },
@@ -1347,6 +1398,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "Document ID" }
       },
       required: ["documentId"]
@@ -1358,6 +1410,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        "account": { "type": "string", "description": "Email address of the Google account to use" },
         documentId: { type: "string", description: "Document ID" },
         index: { type: "number", description: "1-based character index where the footnote reference should be inserted" },
         endOfSegment: { type: "boolean", description: "If true, insert footnote at the end of the document body (use instead of index)" },
@@ -1385,11 +1438,14 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse(validation.error.errors[0].message);
       }
       const a = validation.data;
+      const drive = await ctx.getDriveForAccount(a.account ?? '');
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
-      const parentFolderId = await ctx.resolveFolderId(a.parentFolderId);
+      const parentFolderId = await ctx.resolveFolderId(a.parentFolderId, drive);
 
       // Check if document already exists
-      const existingFileId = await ctx.checkFileExists(a.name, parentFolderId);
+      const existingFileId = await ctx.checkFileExists(a.name, drive, parentFolderId);
       if (existingFileId) {
         return errorResponse(
           `A document named "${a.name}" already exists in this location. ` +
@@ -1400,7 +1456,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       // Create empty doc
       let docResponse;
       try {
-        docResponse = await ctx.getDrive().files.create({
+        docResponse = await drive.files.create({
           requestBody: {
             name: a.name,
             mimeType: 'application/vnd.google-apps.document',
@@ -1419,8 +1475,6 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         throw createError;
       }
       const doc = docResponse.data;
-
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
       await docs.documents.batchUpdate({
         documentId: doc.id!,
         requestBody: {
@@ -1458,7 +1512,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
       if (a.tabId) {
         // Tab-scoped path: single atomic batchUpdate so a failed insert can't leave the tab wiped.
@@ -1564,7 +1619,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       const a = validation.data;
       const withFormatting = a.includeFormatting === true;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       const document = await docs.documents.get({
         documentId: a.documentId,
         includeTabsContent: true,
@@ -1844,7 +1900,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       const location: { index: number; tabId?: string } = { index: a.index };
       if (a.tabId) location.tabId = a.tabId;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       await docs.documents.batchUpdate({
         documentId: a.documentId,
         requestBody: {
@@ -1880,7 +1937,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       };
       if (a.tabId) range.tabId = a.tabId;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       await docs.documents.batchUpdate({
         documentId: a.documentId,
         requestBody: {
@@ -1903,7 +1961,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       const docResponse = await docs.documents.get({
         documentId: a.documentId,
         includeTabsContent: true,
@@ -2017,7 +2076,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       // Use includeTabsContent to get the new tabs structure
       const docResponse = await docs.documents.get({
         documentId: a.documentId,
@@ -2146,7 +2206,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse("No valid style options provided");
       }
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       await docs.documents.batchUpdate({
         documentId: a.documentId,
         requestBody: {
@@ -2168,6 +2229,9 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
+
       let startIndex: number;
       let endIndex: number;
 
@@ -2177,7 +2241,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         endIndex = a.endIndex;
       } else if (a.textToFind !== undefined) {
         const range = await findTextRange(
-          ctx,
+          docs,
           a.documentId,
           a.textToFind,
           a.matchInstance || 1
@@ -2186,14 +2250,14 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
           return errorResponse(`Text "${a.textToFind}" not found in document`);
         }
         // For paragraph style, get the full paragraph range
-        const paraRange = await getParagraphRange(ctx, a.documentId, range.startIndex);
+        const paraRange = await getParagraphRange(docs, a.documentId, range.startIndex);
         if (!paraRange) {
           return errorResponse("Could not determine paragraph boundaries");
         }
         startIndex = paraRange.startIndex;
         endIndex = paraRange.endIndex;
       } else if (a.indexWithinParagraph !== undefined) {
-        const paraRange = await getParagraphRange(ctx, a.documentId, a.indexWithinParagraph);
+        const paraRange = await getParagraphRange(docs, a.documentId, a.indexWithinParagraph);
         if (!paraRange) {
           return errorResponse("Could not determine paragraph boundaries");
         }
@@ -2220,7 +2284,6 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse("No valid style options provided");
       }
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
       await docs.documents.batchUpdate({
         documentId: a.documentId,
         requestBody: {
@@ -2264,7 +2327,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse("Must provide either startIndex+endIndex or textToFind");
       }
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
       if (a.bulletPreset === 'NONE') {
         await docs.documents.batchUpdate({
@@ -2308,7 +2372,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
       if (a.dryRun) {
         const doc = await docs.documents.get({ documentId: a.documentId });
@@ -2366,7 +2431,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const response = await ctx.getDrive().comments.list({
+      const response = await (await ctx.getDriveForAccount(a.account ?? '')).comments.list({
         fileId: a.documentId,
         fields: 'comments(id,content,quotedFileContent,author,createdTime,resolved,replies(id,content,author,createdTime)),nextPageToken',
         pageSize: a.pageSize || 100,
@@ -2398,7 +2463,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       let needsDocxFallback = false;
       let isGoogleDoc = false;
       try {
-        const fileInfo = await ctx.getDrive().files.get({
+        const fileInfo = await (await ctx.getDriveForAccount(a.account ?? '')).files.get({
           fileId: a.documentId,
           fields: 'mimeType',
           supportsAllDrives: true,
@@ -2410,7 +2475,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
 
       if (isGoogleDoc) {
         try {
-          const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+          const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
           const docResponse = await docs.documents.get({
             documentId: a.documentId,
             includeTabsContent: true,
@@ -2482,7 +2548,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
 
         if (unresolved.length > 0) {
           try {
-            const docxResponse = await ctx.getDrive().files.export({
+            const docxResponse = await (await ctx.getDriveForAccount(a.account ?? '')).files.export({
               fileId: a.documentId,
               mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             }, { responseType: 'arraybuffer' });
@@ -2551,7 +2617,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const response = await ctx.getDrive().comments.get({
+      const response = await (await ctx.getDriveForAccount(a.account ?? '')).comments.get({
         fileId: a.documentId,
         commentId: a.commentId,
         fields: 'id,content,quotedFileContent,author,createdTime,resolved,replies(id,content,author,createdTime)'
@@ -2593,7 +2659,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
 
       // Get the document to extract quoted text
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       const doc = await docs.documents.get({ documentId: a.documentId });
 
       // Extract quoted text from the range
@@ -2617,7 +2684,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         }
       }
 
-      const response = await ctx.getDrive().comments.create({
+      const response = await (await ctx.getDriveForAccount(a.account ?? '')).comments.create({
         fileId: a.documentId,
         fields: 'id,content,quotedFileContent,author,createdTime',
         requestBody: {
@@ -2655,7 +2722,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const response = await ctx.getDrive().replies.create({
+      const response = await (await ctx.getDriveForAccount(a.account ?? '')).replies.create({
         fileId: a.documentId,
         commentId: a.commentId,
         fields: 'id,content,author,createdTime',
@@ -2679,7 +2746,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      await ctx.getDrive().comments.delete({
+      await (await ctx.getDriveForAccount(a.account ?? '')).comments.delete({
         fileId: a.documentId,
         commentId: a.commentId
       });
@@ -2700,6 +2767,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse(validation.error.errors[0].message);
       }
       const a = validation.data;
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
       const request_body = {
         insertTable: {
@@ -2709,7 +2778,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         }
       };
 
-      await executeBatchUpdate(ctx, a.documentId, [request_body]);
+      await executeBatchUpdate(docs, a.documentId, [request_body]);
 
       return {
         content: [{ type: "text", text: `Successfully inserted ${a.rows}x${a.columns} table at index ${a.index}` }],
@@ -2725,7 +2794,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       const a = validation.data;
 
       // Get the document to find the table structure
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
       const docRes = await docs.documents.get({
         documentId: a.documentId,
@@ -2834,7 +2904,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse("No changes specified for the table cell");
       }
 
-      await executeBatchUpdate(ctx, a.documentId, requests);
+      await executeBatchUpdate(docs, a.documentId, requests);
 
       return {
         content: [{ type: "text", text: `Successfully edited cell at row ${a.rowIndex}, column ${a.columnIndex}` }],
@@ -2848,8 +2918,10 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse(validation.error.errors[0].message);
       }
       const a = validation.data;
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
-      await insertInlineImageHelper(ctx, a.documentId, a.imageUrl, a.index, a.width, a.height);
+      await insertInlineImageHelper(docs, a.documentId, a.imageUrl, a.index, a.width, a.height);
 
       return {
         content: [{ type: "text", text: `Successfully inserted image from URL at index ${a.index}` }],
@@ -2863,11 +2935,14 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         return errorResponse(validation.error.errors[0].message);
       }
       const a = validation.data;
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
+      const drive = await ctx.getDriveForAccount(a.account ?? '');
 
       // Get the document's parent folder if uploadToSameFolder is true
       let parentFolderId: string | undefined;
       if (a.uploadToSameFolder !== false) {
-        const fileInfo = await ctx.getDrive().files.get({
+        const fileInfo = await drive.files.get({
           fileId: a.documentId,
           fields: 'parents',
           supportsAllDrives: true
@@ -2876,13 +2951,13 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
 
       // Upload the image to Drive
-      const { webContentLink: imageUrl } = await uploadImageToDrive(ctx, a.localImagePath, {
+      const { webContentLink: imageUrl } = await uploadImageToDrive(drive, a.localImagePath, {
         parentFolderId,
         makePublic: a.makePublic,
       });
 
       // Insert the image into the document
-      await insertInlineImageHelper(ctx, a.documentId, imageUrl, a.index, a.width, a.height);
+      await insertInlineImageHelper(docs, a.documentId, imageUrl, a.index, a.width, a.height);
 
       return {
         content: [{ type: "text", text: `Successfully uploaded and inserted local image at index ${a.index}\nImage URL: ${imageUrl}` }],
@@ -2908,7 +2983,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
         queryString += ` and (name contains '${escapedQuery}' or fullText contains '${escapedQuery}')`;
       }
 
-      const response = await ctx.getDrive().files.list({
+      const response = await (await ctx.getDriveForAccount(a.account ?? '')).files.list({
         q: queryString,
         pageSize: a.maxResults,
         orderBy: a.orderBy === 'name' ? 'name' : a.orderBy,
@@ -2945,7 +3020,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       }
       const a = validation.data;
 
-      const response = await ctx.getDrive().files.get({
+      const response = await (await ctx.getDriveForAccount(a.account ?? '')).files.get({
         fileId: a.documentId,
         fields: 'id,name,description,mimeType,size,createdTime,modifiedTime,webViewLink,owners(displayName,emailAddress),lastModifyingUser(displayName,emailAddress),shared,parents,version',
       });
@@ -2992,7 +3067,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       await docs.documents.batchUpdate({
         documentId: a.documentId,
         // addDocumentTab is not yet in the googleapis TypeScript types — cast required
@@ -3007,7 +3083,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       await docs.documents.batchUpdate({
         documentId: a.documentId,
         // updateDocumentTabProperties is not yet in the googleapis TypeScript types — cast required.
@@ -3024,7 +3101,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       await docs.documents.batchUpdate({
         documentId: a.documentId,
         requestBody: {
@@ -3046,7 +3124,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
       const doc = await docs.documents.get({ documentId: a.documentId });
       const body = (doc.data as any).body?.content || [];
       const hits: string[] = [];
@@ -3065,7 +3144,8 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       if (!validation.success) return errorResponse(validation.error.errors[0].message);
       const a = validation.data;
 
-      const docs = ctx.google.docs({ version: 'v1', auth: ctx.authClient });
+      const authClient = await ctx.getAuthClientForAccount(a.account ?? '');
+      const docs = ctx.google.docs({ version: 'v1', auth: authClient });
 
       // Build the createFootnote request
       const createFootnoteReq: { location?: { index: number }; endOfSegmentLocation?: { segmentId: string } } = {};

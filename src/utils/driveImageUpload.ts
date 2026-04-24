@@ -1,6 +1,6 @@
 import { existsSync, createReadStream } from 'fs';
 import { basename, extname } from 'path';
-import type { ToolContext } from '../types.js';
+import type { drive_v3 } from 'googleapis';
 
 const MIME_BY_EXT: { [ext: string]: string } = {
   '.jpg': 'image/jpeg',
@@ -18,7 +18,7 @@ export interface UploadedImage {
 }
 
 export async function uploadImageToDrive(
-  ctx: ToolContext,
+  drive: drive_v3.Drive,
   localFilePath: string,
   options: { parentFolderId?: string; makePublic?: boolean } = {},
 ): Promise<UploadedImage> {
@@ -37,8 +37,6 @@ export async function uploadImageToDrive(
     mimeType,
   };
   if (parentFolderId) requestBody.parents = [parentFolderId];
-
-  const drive = ctx.getDrive();
 
   const uploadResponse = await drive.files.create({
     requestBody,
@@ -69,6 +67,6 @@ export async function uploadImageToDrive(
   return { fileId, webContentLink };
 }
 
-export async function deleteDriveFile(ctx: ToolContext, fileId: string): Promise<void> {
-  await ctx.getDrive().files.delete({ fileId, supportsAllDrives: true });
+export async function deleteDriveFile(drive: drive_v3.Drive, fileId: string): Promise<void> {
+  await drive.files.delete({ fileId, supportsAllDrives: true });
 }

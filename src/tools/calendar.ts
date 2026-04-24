@@ -124,10 +124,12 @@ function formatEventForDisplay(event: CalendarEventInfo): string {
 // ---------------------------------------------------------------------------
 
 const ListCalendarsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   showHidden: z.boolean().optional().default(false).describe("Include hidden calendars")
 });
 
 const GetCalendarEventsSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   calendarId: z.string().optional().default("primary").describe("Calendar ID (default: primary)"),
   timeMin: z.string().optional().describe("Start of time range (RFC3339, e.g., '2024-01-01T00:00:00Z')"),
   timeMax: z.string().optional().describe("End of time range (RFC3339)"),
@@ -138,11 +140,13 @@ const GetCalendarEventsSchema = z.object({
 });
 
 const GetCalendarEventSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   eventId: z.string().min(1, "Event ID is required"),
   calendarId: z.string().optional().default("primary").describe("Calendar ID (default: primary)")
 });
 
 const CreateCalendarEventSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   summary: z.string().min(1, "Event title is required"),
   calendarId: z.string().optional().default("primary").describe("Calendar ID (default: primary)"),
   description: z.string().optional().describe("Event description"),
@@ -165,6 +169,7 @@ const CreateCalendarEventSchema = z.object({
 });
 
 const UpdateCalendarEventSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   eventId: z.string().min(1, "Event ID is required"),
   calendarId: z.string().optional().default("primary").describe("Calendar ID (default: primary)"),
   summary: z.string().optional().describe("New event title"),
@@ -185,6 +190,7 @@ const UpdateCalendarEventSchema = z.object({
 });
 
 const DeleteCalendarEventSchema = z.object({
+  account: z.string().optional().describe("Email address of the Google account to use"),
   eventId: z.string().min(1, "Event ID is required"),
   calendarId: z.string().optional().default("primary").describe("Calendar ID (default: primary)"),
   sendUpdates: z.enum(["all", "externalOnly", "none"]).optional().default("none").describe("Send cancellation notifications to attendees (default: none)")
@@ -201,8 +207,10 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         showHidden: { type: "boolean", description: "Include hidden calendars (default: false)" }
-      }
+      },
+      required: []
     }
   },
   {
@@ -211,6 +219,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         calendarId: { type: "string", description: "Calendar ID (default: primary)" },
         timeMin: { type: "string", description: "Start of time range (RFC3339, e.g., '2024-01-01T00:00:00Z')" },
         timeMax: { type: "string", description: "End of time range (RFC3339)" },
@@ -218,7 +227,8 @@ export const toolDefinitions: ToolDefinition[] = [
         maxResults: { type: "number", description: "Maximum events to return (1-250, default: 50)" },
         singleEvents: { type: "boolean", description: "Expand recurring events into instances (default: true)" },
         orderBy: { type: "string", enum: ["startTime", "updated"], description: "Sort order (default: startTime)" }
-      }
+      },
+      required: []
     }
   },
   {
@@ -227,6 +237,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         eventId: { type: "string", description: "The event ID to retrieve" },
         calendarId: { type: "string", description: "Calendar ID (default: primary)" }
       },
@@ -239,6 +250,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         summary: { type: "string", description: "Event title" },
         calendarId: { type: "string", description: "Calendar ID (default: primary)" },
         description: { type: "string", description: "Event description" },
@@ -276,6 +288,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         eventId: { type: "string", description: "The event ID to update" },
         calendarId: { type: "string", description: "Calendar ID (default: primary)" },
         summary: { type: "string", description: "New event title" },
@@ -309,6 +322,7 @@ export const toolDefinitions: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        account: { type: "string", description: "Email address of the Google account to use" },
         eventId: { type: "string", description: "The event ID to delete" },
         calendarId: { type: "string", description: "Calendar ID (default: primary)" },
         sendUpdates: { type: "string", enum: ["all", "externalOnly", "none"], description: "Send cancellation notifications (default: none)" }
@@ -334,8 +348,9 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const parsed = validation.data;
+      const calendar = await ctx.getCalendarForAccount(parsed.account ?? '');
 
-      const response = await ctx.getCalendar().calendarList.list({
+      const response = await calendar.calendarList.list({
         showHidden: parsed.showHidden,
         maxResults: 250
       });
@@ -363,6 +378,7 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const parsed = validation.data;
+      const calendar = await ctx.getCalendarForAccount(parsed.account ?? '');
 
       const params: any = {
         calendarId: parsed.calendarId || 'primary',
@@ -375,7 +391,7 @@ export async function handleTool(
       if (parsed.timeMax) params.timeMax = parsed.timeMax;
       if (parsed.query) params.q = parsed.query;
 
-      const response = await ctx.getCalendar().events.list(params);
+      const response = await calendar.events.list(params);
 
       const events = response.data.items || [];
       if (events.length === 0) {
@@ -396,8 +412,9 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const parsed = validation.data;
+      const calendar = await ctx.getCalendarForAccount(parsed.account ?? '');
 
-      const response = await ctx.getCalendar().events.get({
+      const response = await calendar.events.get({
         calendarId: parsed.calendarId || 'primary',
         eventId: parsed.eventId
       });
@@ -415,6 +432,7 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const parsed = validation.data;
+      const calendar = await ctx.getCalendarForAccount(parsed.account ?? '');
 
       const eventResource: any = {
         summary: parsed.summary,
@@ -454,7 +472,7 @@ export async function handleTool(
         insertParams.conferenceDataVersion = conferenceDataVersion;
       }
 
-      const response = await ctx.getCalendar().events.insert(insertParams);
+      const response = await calendar.events.insert(insertParams);
       const created = formatCalendarEvent(response.data);
 
       return {
@@ -469,9 +487,10 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const parsed = validation.data;
+      const calendar = await ctx.getCalendarForAccount(parsed.account ?? '');
 
       // First get the existing event
-      const existingResponse = await ctx.getCalendar().events.get({
+      const existingResponse = await calendar.events.get({
         calendarId: parsed.calendarId || 'primary',
         eventId: parsed.eventId
       });
@@ -479,7 +498,7 @@ export async function handleTool(
       const existing = existingResponse.data;
       const eventResource = buildCalendarEventUpdate(existing, parsed);
 
-      const response = await ctx.getCalendar().events.update({
+      const response = await calendar.events.update({
         calendarId: parsed.calendarId || 'primary',
         eventId: parsed.eventId,
         requestBody: eventResource,
@@ -500,8 +519,9 @@ export async function handleTool(
         return errorResponse(validation.error.errors[0].message);
       }
       const parsed = validation.data;
+      const calendar = await ctx.getCalendarForAccount(parsed.account ?? '');
 
-      await ctx.getCalendar().events.delete({
+      await calendar.events.delete({
         calendarId: parsed.calendarId || 'primary',
         eventId: parsed.eventId,
         sendUpdates: parsed.sendUpdates

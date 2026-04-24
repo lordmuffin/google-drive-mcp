@@ -1,5 +1,6 @@
 import type { drive_v3, calendar_v3 } from 'googleapis';
 import type { google as GoogleApisType } from 'googleapis';
+import type { OAuth2Client } from 'google-auth-library';
 
 export interface ToolResult {
   [key: string]: unknown;
@@ -14,14 +15,14 @@ export interface ToolDefinition {
 }
 
 export interface ToolContext {
-  authClient: any;
   google: typeof GoogleApisType;
-  getDrive: () => drive_v3.Drive;
-  getCalendar: () => calendar_v3.Calendar;
+  getDriveForAccount(email: string): Promise<drive_v3.Drive>;
+  getCalendarForAccount(email: string): Promise<calendar_v3.Calendar>;
+  getAuthClientForAccount(email: string): Promise<OAuth2Client>;
   log: (message: string, data?: any) => void;
-  resolvePath: (pathStr: string) => Promise<string>;
-  resolveFolderId: (input: string | undefined) => Promise<string>;
-  checkFileExists: (name: string, parentFolderId?: string) => Promise<string | null>;
+  resolvePath(pathStr: string, drive: drive_v3.Drive): Promise<string>;
+  resolveFolderId(input: string | undefined, drive: drive_v3.Drive): Promise<string>;
+  checkFileExists(name: string, drive: drive_v3.Drive, parentFolderId?: string): Promise<string | null>;
   validateTextFileExtension: (name: string) => void;
 }
 

@@ -1,25 +1,27 @@
 import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
-import { TokenManager } from './tokenManager.js';
+import { tokenStore } from './tokenStore.js';
 import http from 'http';
 import open from 'open';
 import { loadCredentials } from './client.js';
 import { resolveOAuthScopes } from './scopes.js';
 
-const SCOPES = resolveOAuthScopes();
+const SCOPES = [...resolveOAuthScopes(), 'openid', 'email'];
+
+// Deduplicate scopes
+const UNIQUE_SCOPES = [...new Set(SCOPES)];
 
 export class AuthServer {
-  private baseOAuth2Client: OAuth2Client; // Used by TokenManager for validation/refresh
-  private flowOAuth2Client: OAuth2Client | null = null; // Used specifically for the auth code flow
+  private baseOAuth2Client: OAuth2Client;
+  private flowOAuth2Client: OAuth2Client | null = null;
   private app: express.Express;
   private server: http.Server | null = null;
-  private tokenManager: TokenManager;
   public readonly portRange: { start: number; end: number };
-  public authCompletedSuccessfully = false; // Flag for standalone script
+  public authCompletedSuccessfully = false;
+  public lastAuthenticatedEmail: string | null = null;
 
   constructor(oauth2Client: OAuth2Client) {
     this.baseOAuth2Client = oauth2Client;
-    this.tokenManager = new TokenManager(oauth2Client);
     this.app = express();
     const raw = process.env.GOOGLE_DRIVE_MCP_AUTH_PORT;
     const portStart = raw ? Number(raw) : 3000;
@@ -33,44 +35,132 @@ export class AuthServer {
   }
 
   private setupRoutes(): void {
-    this.app.get('/', (req, res) => {
-      // Generate the URL using the active flow client if available, else base
+    // ---- Setup / account management page ----
+    this.app.get('/setup', async (_req, res) => {
+      const emails = await tokenStore.listEmails();
+      const defaultAccount = await tokenStore.getDefaultAccount();
+      const storePath = tokenStore.getStorePath();
+
+      const accountRows = emails.length === 0
+        ? '<tr><td colspan="3"><em>No accounts connected yet.</em></td></tr>'
+        : emails.map(email => {
+            const isDefault = email === defaultAccount;
+            return `
+              <tr>
+                <td>${email}${isDefault ? ' <strong>(default)</strong>' : ''}</td>
+                <td>
+                  ${!isDefault ? `<a href="/set-default?email=${encodeURIComponent(email)}">Set as default</a>` : '—'}
+                </td>
+                <td>
+                  <a href="/remove-account?email=${encodeURIComponent(email)}" onclick="return confirm('Remove ${email}?')">Remove</a>
+                </td>
+              </tr>`;
+          }).join('\n');
+
+      res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Google Drive MCP – Account Setup</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 2em auto; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 0.5em 1em; text-align: left; }
+    th { background: #f0f0f0; }
+    .actions { margin-top: 1.5em; }
+  </style>
+</head>
+<body>
+  <h1>Google Drive MCP – Account Setup</h1>
+  <p>Token store: <code>${storePath}</code></p>
+
+  <h2>Connected accounts</h2>
+  <table>
+    <thead><tr><th>Email</th><th>Default</th><th>Remove</th></tr></thead>
+    <tbody>${accountRows}</tbody>
+  </table>
+
+  <div class="actions">
+    <a href="/">➕ Add another account</a>
+  </div>
+</body>
+</html>`);
+    });
+
+    // ---- Remove account ----
+    this.app.get('/remove-account', async (req, res) => {
+      const email = req.query.email as string;
+      if (!email) { res.status(400).send('Missing email parameter'); return; }
+      try {
+        await tokenStore.removeAccount(email);
+        res.redirect('/setup');
+      } catch (err) {
+        res.status(500).send(`Failed to remove account: ${err instanceof Error ? err.message : err}`);
+      }
+    });
+
+    // ---- Set default account ----
+    this.app.get('/set-default', async (req, res) => {
+      const email = req.query.email as string;
+      if (!email) { res.status(400).send('Missing email parameter'); return; }
+      try {
+        await tokenStore.setDefaultAccount(email);
+        res.redirect('/setup');
+      } catch (err) {
+        res.status(500).send(`Failed to set default: ${err instanceof Error ? err.message : err}`);
+      }
+    });
+
+    // ---- Auth start page ----
+    this.app.get('/', (_req, res) => {
       const clientForUrl = this.flowOAuth2Client || this.baseOAuth2Client;
       const authUrl = clientForUrl.generateAuthUrl({
         access_type: 'offline',
-        scope: SCOPES,
+        scope: UNIQUE_SCOPES,
         prompt: 'consent'
       });
-      res.send(`<h1>Google Drive Authentication</h1><a href="${authUrl}">Authenticate with Google</a>`);
+      res.send(`<h1>Google Drive MCP – Add Account</h1><a href="${authUrl}">Authenticate with Google</a><br><br><a href="/setup">← Back to setup</a>`);
     });
 
+    // ---- OAuth callback ----
     this.app.get('/oauth2callback', async (req, res) => {
       const code = req.query.code as string;
       if (!code) {
         res.status(400).send('Authorization code missing');
         return;
       }
-      // IMPORTANT: Use the flowOAuth2Client to exchange the code
       if (!this.flowOAuth2Client) {
         res.status(500).send('Authentication flow not properly initiated.');
         return;
       }
       try {
         const { tokens } = await this.flowOAuth2Client.getToken(code);
-        // Save tokens using the TokenManager (which uses the base client)
-        await this.tokenManager.saveTokens(tokens);
+
+        // Discover the authenticated email via userinfo endpoint
+        let email: string;
+        try {
+          this.flowOAuth2Client.setCredentials(tokens);
+          const userinfoRes = await this.flowOAuth2Client.request<{ email: string }>({
+            url: 'https://www.googleapis.com/oauth2/v3/userinfo',
+          });
+          email = userinfoRes.data.email;
+        } catch {
+          email = `account-${Date.now()}@unknown.local`;
+          console.error('Warning: could not discover email from userinfo, using placeholder:', email);
+        }
+
+        // Save tokens to multi-account store
+        await tokenStore.saveTokens(email, tokens);
+        this.lastAuthenticatedEmail = email;
         this.authCompletedSuccessfully = true;
 
-        // Get the path where tokens were saved
-        const tokenPath = this.tokenManager.getTokenPath();
+        const tokenPath = tokenStore.getStorePath();
 
-        // Send a more informative HTML response including the path
         res.send(`
           <!DOCTYPE html>
           <html lang="en">
           <head>
               <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <title>Authentication Successful</title>
               <style>
                   body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; margin: 0; }
@@ -83,9 +173,10 @@ export class AuthServer {
           <body>
               <div class="container">
                   <h1>Authentication Successful!</h1>
-                  <p>Your authentication tokens have been saved successfully to:</p>
-                  <p><code>${tokenPath}</code></p>
+                  <p>Account <strong>${email}</strong> has been connected.</p>
+                  <p>Tokens saved to: <code>${tokenPath}</code></p>
                   <p>You can now close this browser window.</p>
+                  <p><a href="/setup">Manage accounts →</a></p>
               </div>
           </body>
           </html>
@@ -93,13 +184,11 @@ export class AuthServer {
       } catch (error: unknown) {
         this.authCompletedSuccessfully = false;
         const message = error instanceof Error ? error.message : 'Unknown error';
-        // Send an HTML error response
         res.status(500).send(`
           <!DOCTYPE html>
           <html lang="en">
           <head>
               <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <title>Authentication Failed</title>
               <style>
                   body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; margin: 0; }
@@ -123,11 +212,13 @@ export class AuthServer {
   }
 
   async start(openBrowser = true): Promise<boolean> {
-    if (await this.tokenManager.validateTokens()) {
+    // Fast path: if any accounts exist, consider authentication complete
+    const existingEmails = await tokenStore.listEmails();
+    if (existingEmails.length > 0) {
       this.authCompletedSuccessfully = true;
       return true;
     }
-    
+
     // Try to start the server and get the port
     const port = await this.startServerOnAvailablePort();
     if (port === null) {
@@ -135,7 +226,7 @@ export class AuthServer {
       return false;
     }
 
-    // Successfully started server on `port`. Now create the flow-specific OAuth client.
+    // Create the flow-specific OAuth client with the correct redirect URI
     try {
       const { client_id, client_secret } = await loadCredentials();
       this.flowOAuth2Client = new OAuth2Client(
@@ -144,65 +235,57 @@ export class AuthServer {
         `http://localhost:${port}/oauth2callback`
       );
     } catch (error) {
-        // Could not load credentials, cannot proceed with auth flow
-        console.error('Failed to load credentials for auth flow:', error);
-        this.authCompletedSuccessfully = false;
-        await this.stop(); // Stop the server we just started
-        return false;
+      console.error('Failed to load credentials for auth flow:', error);
+      this.authCompletedSuccessfully = false;
+      await this.stop();
+      return false;
     }
 
     if (openBrowser) {
-      // Generate Auth URL using the newly created flow client
       const authorizeUrl = this.flowOAuth2Client.generateAuthUrl({
         access_type: 'offline',
-        scope: SCOPES,
+        scope: UNIQUE_SCOPES,
         prompt: 'consent'
       });
-      
+
       console.error('\n🔐 AUTHENTICATION REQUIRED');
       console.error('══════════════════════════════════════════');
       console.error('\nOpening your browser to authenticate...');
       console.error(`If the browser doesn't open, visit:\n${authorizeUrl}\n`);
-      
+
       await open(authorizeUrl);
     }
 
-    return true; // Auth flow initiated
+    return true;
   }
 
   private async startServerOnAvailablePort(): Promise<number | null> {
     for (let port = this.portRange.start; port <= this.portRange.end; port++) {
       try {
         await new Promise<void>((resolve, reject) => {
-          // Create a temporary server instance to test the port
           const testServer = this.app.listen(port, () => {
-            this.server = testServer; // Assign to class property *only* if successful
+            this.server = testServer;
             console.error(`Authentication server listening on http://localhost:${port}`);
             resolve();
           });
           testServer.on('error', (err: NodeJS.ErrnoException) => {
             if (err.code === 'EADDRINUSE') {
-              // Port is in use, close the test server and reject
-              testServer.close(() => reject(err)); 
+              testServer.close(() => reject(err));
             } else {
-              // Other error, reject
               reject(err);
             }
           });
         });
-        return port; // Port successfully bound
+        return port;
       } catch (error: unknown) {
-        // Check if it's EADDRINUSE, otherwise rethrow or handle
         if (!(error instanceof Error && 'code' in error && (error as any).code === 'EADDRINUSE')) {
-            // An unexpected error occurred during server start
-            console.error('Failed to start auth server:', error);
-            return null;
+          console.error('Failed to start auth server:', error);
+          return null;
         }
-        // EADDRINUSE occurred, loop continues
       }
     }
     console.error('No available ports for authentication server (tried ports', this.portRange.start, '-', this.portRange.end, ')');
-    return null; // No port found
+    return null;
   }
 
   public getRunningPort(): number | null {

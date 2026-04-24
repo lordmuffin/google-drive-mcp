@@ -34,6 +34,30 @@ describe('Docs listing tools', () => {
       assert.equal(res.isError, false);
       assert.ok(res.content[0].text.includes('No Google Docs'));
     });
+
+    it('passes sortOrder desc to Drive API', async () => {
+      ctx.mocks.drive.service.files.list._setImpl(async (params: any) => {
+        assert.equal(params.orderBy, 'modifiedTime desc');
+        return { data: { files: [] } };
+      });
+      await callTool(ctx.client, 'listGoogleDocs', { sortOrder: 'desc' });
+    });
+
+    it('passes default asc sortOrder to Drive API', async () => {
+      ctx.mocks.drive.service.files.list._setImpl(async (params: any) => {
+        assert.equal(params.orderBy, 'modifiedTime');
+        return { data: { files: [] } };
+      });
+      await callTool(ctx.client, 'listGoogleDocs', {});
+    });
+
+    it('combines custom orderBy with desc', async () => {
+      ctx.mocks.drive.service.files.list._setImpl(async (params: any) => {
+        assert.equal(params.orderBy, 'name desc');
+        return { data: { files: [] } };
+      });
+      await callTool(ctx.client, 'listGoogleDocs', { orderBy: 'name', sortOrder: 'desc' });
+    });
   });
 
   // --- getDocumentInfo ---

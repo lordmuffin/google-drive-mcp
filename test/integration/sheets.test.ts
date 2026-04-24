@@ -324,6 +324,22 @@ describe('Sheets tools', () => {
       assert.equal(res.isError, false);
       assert.ok(res.content[0].text.includes('Budget'));
     });
+
+    it('passes sortOrder desc to Drive API', async () => {
+      ctx.mocks.drive.service.files.list._setImpl(async (params: any) => {
+        assert.equal(params.orderBy, 'modifiedTime desc');
+        return { data: { files: [] } };
+      });
+      await callTool(ctx.client, 'listGoogleSheets', { sortOrder: 'desc' });
+    });
+
+    it('passes default asc sortOrder to Drive API', async () => {
+      ctx.mocks.drive.service.files.list._setImpl(async (params: any) => {
+        assert.equal(params.orderBy, 'modifiedTime');
+        return { data: { files: [] } };
+      });
+      await callTool(ctx.client, 'listGoogleSheets', {});
+    });
   });
 
   // --- copyFile ---

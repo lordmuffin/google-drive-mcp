@@ -877,7 +877,8 @@ const InsertLocalImageSchema = z.object({
 const ListGoogleDocsSchema = z.object({
   maxResults: z.number().int().min(1).max(100).optional().default(20).describe("Maximum number of documents to return (1-100)."),
   query: z.string().optional().describe("Search query to filter documents by name or content."),
-  orderBy: z.enum(["name", "modifiedTime", "createdTime"]).optional().default("modifiedTime").describe("Sort order for results.")
+  orderBy: z.enum(["name", "modifiedTime", "createdTime"]).optional().default("modifiedTime").describe("Field to sort results by."),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("asc").describe("Sort direction. 'desc' returns newest/last-modified first.")
 });
 
 const GetDocumentInfoSchema = z.object({
@@ -1286,7 +1287,8 @@ export const toolDefinitions: ToolDefinition[] = [
       properties: {
         maxResults: { type: "integer", description: "Maximum number of documents to return (1-100)." },
         query: { type: "string", description: "Search query to filter documents by name or content." },
-        orderBy: { type: "string", enum: ["name", "modifiedTime", "createdTime"], description: "Sort order for results." }
+        orderBy: { type: "string", enum: ["name", "modifiedTime", "createdTime"], description: "Field to sort results by." },
+        sortOrder: { type: "string", enum: ["asc", "desc"], description: "Sort direction. 'desc' returns newest/last-modified first." }
       },
       required: []
     }
@@ -2911,7 +2913,7 @@ export async function handleTool(toolName: string, args: Record<string, unknown>
       const response = await ctx.getDrive().files.list({
         q: queryString,
         pageSize: a.maxResults,
-        orderBy: a.orderBy === 'name' ? 'name' : a.orderBy,
+        orderBy: a.sortOrder === 'desc' ? `${a.orderBy} desc` : a.orderBy,
         fields: 'files(id,name,modifiedTime,createdTime,size,webViewLink,owners(displayName,emailAddress))',
         supportsAllDrives: true,
         includeItemsFromAllDrives: true

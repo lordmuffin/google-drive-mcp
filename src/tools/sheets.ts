@@ -171,7 +171,8 @@ const AddNamedRangeSchema = z.object({
 const ListGoogleSheetsSchema = z.object({
   maxResults: z.number().int().min(1).max(100).optional().default(20),
   query: z.string().optional(),
-  orderBy: z.enum(["name", "modifiedTime", "createdTime"]).optional().default("modifiedTime")
+  orderBy: z.enum(["name", "modifiedTime", "createdTime"]).optional().default("modifiedTime"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("asc")
 });
 
 // ---------------------------------------------------------------------------
@@ -571,7 +572,8 @@ export const toolDefinitions: ToolDefinition[] = [
       properties: {
         maxResults: { type: "number", description: "Maximum number of spreadsheets to return (1-100)", default: 20 },
         query: { type: "string", description: "Search query to filter spreadsheets by name or content" },
-        orderBy: { type: "string", description: "Sort order for results", enum: ["name", "modifiedTime", "createdTime"], default: "modifiedTime" }
+        orderBy: { type: "string", description: "Field to sort results by", enum: ["name", "modifiedTime", "createdTime"], default: "modifiedTime" },
+        sortOrder: { type: "string", enum: ["asc", "desc"], description: "Sort direction. 'desc' returns newest/last-modified first." }
       },
       required: []
     }
@@ -1374,7 +1376,7 @@ export async function handleTool(
       const response = await ctx.getDrive().files.list({
         q: queryString,
         pageSize: a.maxResults || 20,
-        orderBy: a.orderBy === 'name' ? 'name' : a.orderBy,
+        orderBy: a.sortOrder === 'desc' ? `${a.orderBy} desc` : a.orderBy,
         fields: 'files(id,name,modifiedTime,createdTime,webViewLink,owners(displayName,emailAddress))',
         supportsAllDrives: true,
         includeItemsFromAllDrives: true

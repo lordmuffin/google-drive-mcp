@@ -22,7 +22,7 @@ export {
  * Authenticate and return OAuth2 client
  * This is the main entry point for authentication in the MCP server
  */
-export async function authenticate(): Promise<any> {
+export async function authenticate(tokenPath?: string): Promise<any> {
   console.error('Initializing authentication...');
 
   // Priority 1: Service account
@@ -40,8 +40,8 @@ export async function authenticate(): Promise<any> {
 
   // Initialize OAuth2 client
   const oauth2Client = await initializeOAuth2Client();
-  const tokenManager = new TokenManager(oauth2Client);
-  
+  const tokenManager = new TokenManager(oauth2Client, tokenPath);
+
   // Try to validate existing tokens
   if (await tokenManager.validateTokens()) {
     console.error('Authentication successful - using existing tokens');
@@ -52,18 +52,18 @@ export async function authenticate(): Promise<any> {
     });
     return oauth2Client;
   }
-  
+
   // No valid tokens, need to authenticate
   console.error('\n🔐 No valid authentication tokens found.');
   console.error('Starting authentication flow...\n');
-  
-  const authServer = new AuthServer(oauth2Client);
+
+  const authServer = new AuthServer(oauth2Client, tokenPath);
   const authSuccess = await authServer.start(true);
-  
+
   if (!authSuccess) {
     throw new Error('Authentication failed. Please check your credentials and try again.');
   }
-  
+
   // Wait for authentication to complete
   await new Promise<void>((resolve) => {
     const checkInterval = setInterval(async () => {
@@ -74,7 +74,7 @@ export async function authenticate(): Promise<any> {
       }
     }, 1000);
   });
-  
+
   return oauth2Client;
 }
 

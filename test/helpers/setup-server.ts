@@ -37,10 +37,10 @@ export async function setupTestServer(): Promise<TestContext> {
     _serverModule = await import('../../src/index.js');
   }
 
-  // Inject fake auth client to bypass authenticate()
+  // Inject fake auth client to bypass authenticate() — alias "default" seeds the account registry too
   _serverModule._setAuthClientForTesting({
     request: async () => ({ data: 'mock-auth-request-response' }),
-  });
+  }, 'default');
 
   const server = _serverModule.server;
 

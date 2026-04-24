@@ -1693,7 +1693,7 @@ export async function handleTool(
     }
 
     case "authGetStatus": {
-      const tokenPath = getSecureTokenPath();
+      const tokenPath = ctx.getTokenPath ? ctx.getTokenPath() : getSecureTokenPath();
       const tokenFileExists = existsSync(tokenPath);
       let scopeStatus: ReturnType<typeof resolveScopeStatus>;
       try {

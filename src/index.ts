@@ -13,8 +13,12 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { randomUUID } from 'crypto';
 import { google } from "googleapis";
-import type { drive_v3, calendar_v3 } from "googleapis";
-import { authenticate, AuthServer, initializeOAuth2Client } from './auth.js';
+import type { drive_v3 } from "googleapis";
+import { initializeOAuth2Client, AuthServer } from './auth.js';
+import {
+  isServiceAccountMode, createServiceAccountAuth,
+  isExternalTokenMode, validateExternalTokenConfig, createExternalOAuth2Client,
+} from './auth.js';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -23,40 +27,22 @@ import {
   escapeDriveQuery,
 } from './utils.js';
 import type { ToolContext } from './types.js';
-import { errorResponse } from './types.js';
+import { errorResponse, withAccountParam } from './types.js';
+import { AccountManager } from './auth/accountManager.js';
+import { DriveClientCache } from './auth/driveClientCache.js';
 
 import * as driveTools from './tools/drive.js';
 import * as docsTools from './tools/docs.js';
 import * as sheetsTools from './tools/sheets.js';
 import * as slidesTools from './tools/slides.js';
 import * as calendarTools from './tools/calendar.js';
+import * as accountsTools from './tools/accounts.js';
 
-// Cached service instances — only recreated when authClient changes
-let _drive: drive_v3.Drive | null = null;
-let _calendar: calendar_v3.Calendar | null = null;
-let _lastAuthClient: any = null;
-
-function getDrive(): drive_v3.Drive {
-  if (!authClient) throw new Error('Authentication required');
-  if (_drive && _lastAuthClient === authClient) return _drive;
-  _drive = google.drive({ version: 'v3', auth: authClient });
-  log('Drive service created');
-  return _drive;
-}
-
-function getCalendar(): calendar_v3.Calendar {
-  if (!authClient) throw new Error('Authentication required');
-  if (_calendar && _lastAuthClient === authClient) return _calendar;
-  _calendar = google.calendar({ version: 'v3', auth: authClient });
-  log('Calendar service created');
-  return _calendar;
-}
+// Module-level singletons
+const accountManager = new AccountManager();
+const driveClientCache = new DriveClientCache(accountManager);
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
-
-// Global auth client - will be initialized on first use
-let authClient: any = null;
-let authenticationPromise: Promise<any> | null = null;
 
 // Get package version
 const __filename = fileURLToPath(import.meta.url);
@@ -77,131 +63,231 @@ function log(message: string, data?: any) {
 }
 
 // -----------------------------------------------------------------------------
-// HELPER FUNCTIONS
+// SERVER READINESS
 // -----------------------------------------------------------------------------
 
-async function resolvePath(pathStr: string): Promise<string> {
-  if (!pathStr || pathStr === '/') return 'root';
+const SYNTHETIC_SERVICE_ACCOUNT = '__service_account__';
+const SYNTHETIC_EXTERNAL_TOKEN = '__external_token__';
 
-  const parts = pathStr.replace(/^\/+|\/+$/g, '').split('/');
-  let currentFolderId: string = 'root';
+let _serverReadyPromise: Promise<void> | null = null;
 
-  for (const part of parts) {
-    if (!part) continue;
-    const escapedPart = escapeDriveQuery(part);
-    const response = await getDrive().files.list({
-      q: `'${currentFolderId}' in parents and name = '${escapedPart}' and mimeType = '${FOLDER_MIME_TYPE}' and trashed = false`,
-      fields: 'files(id)',
-      spaces: 'drive',
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true
-    });
+async function ensureServerReady(): Promise<void> {
+  if (_serverReadyPromise) return _serverReadyPromise;
+  _serverReadyPromise = (async () => {
+    // Migrate old single-account tokens.json → accounts/default/tokens.json
+    await accountManager.migrateDefaultAccount();
 
-    if (!response.data.files?.length) {
-      const folderMetadata = {
-        name: part,
-        mimeType: FOLDER_MIME_TYPE,
-        parents: [currentFolderId]
-      };
-      const folder = await getDrive().files.create({
-        requestBody: folderMetadata,
-        fields: 'id',
+    if (isServiceAccountMode()) {
+      const client = await createServiceAccountAuth();
+      driveClientCache.setPrebuiltClient(SYNTHETIC_SERVICE_ACCOUNT, client);
+      log('Service account mode initialized');
+    } else if (isExternalTokenMode()) {
+      validateExternalTokenConfig();
+      const client = createExternalOAuth2Client();
+      driveClientCache.setPrebuiltClient(SYNTHETIC_EXTERNAL_TOKEN, client);
+      log('External token mode initialized');
+    }
+    // OAuth accounts are loaded lazily by DriveClientCache on first use
+  })();
+  return _serverReadyPromise;
+}
+
+// -----------------------------------------------------------------------------
+// ACCOUNT RESOLUTION
+// -----------------------------------------------------------------------------
+
+async function resolveAccount(raw: string | undefined): Promise<string> {
+  // Non-OAuth modes bypass account registry
+  if (isServiceAccountMode()) return SYNTHETIC_SERVICE_ACCOUNT;
+  if (isExternalTokenMode()) return SYNTHETIC_EXTERNAL_TOKEN;
+
+  // OAuth mode
+  if (raw) {
+    // Prebuilt (test-injected) aliases resolve immediately without file I/O
+    if (driveClientCache.hasPrebuilt(raw)) return raw;
+    const found = await accountManager.getAccount(raw);
+    if (!found) {
+      const accounts = await accountManager.listAccounts();
+      const names = accounts.map((a) => `${a.alias} (${a.email})`).join(', ');
+      throw new Error(
+        `Account not found: "${raw}".${names ? ` Available: ${names}` : ' No accounts configured — run authenticate_account first.'}`
+      );
+    }
+    return found.alias;
+  }
+
+  // No account param — prebuilt aliases take priority (test mode compatibility)
+  const prebuiltAliases = driveClientCache.getPrebuiltAliases();
+  if (prebuiltAliases.length === 1) return prebuiltAliases[0];
+
+  const accounts = await accountManager.listAccounts();
+  // Merge prebuilt + file-based, deduped
+  const allAliases = [...new Set([...prebuiltAliases, ...accounts.map((a) => a.alias)])];
+  if (allAliases.length === 1) return allAliases[0];
+  if (allAliases.length === 0) {
+    throw new Error('No accounts configured. Run authenticate_account to add one.');
+  }
+  const names = [...prebuiltAliases.map((a) => a), ...accounts.map((a) => `${a.alias} (${a.email})`)].join(', ');
+  throw new Error(
+    `Multiple accounts configured. Specify the "account" parameter. Available: ${names}`
+  );
+}
+
+// -----------------------------------------------------------------------------
+// TOOL CONTEXT FACTORY
+// -----------------------------------------------------------------------------
+
+async function buildToolContext(alias: string): Promise<ToolContext> {
+  const entry = await driveClientCache.getEntry(alias);
+  const { drive, calendar, authClient } = entry;
+
+  async function resolvePath(pathStr: string): Promise<string> {
+    if (!pathStr || pathStr === '/') return 'root';
+
+    const parts = pathStr.replace(/^\/+|\/+$/g, '').split('/');
+    let currentFolderId: string = 'root';
+
+    for (const part of parts) {
+      if (!part) continue;
+      const escapedPart = escapeDriveQuery(part);
+      const response = await drive.files.list({
+        q: `'${currentFolderId}' in parents and name = '${escapedPart}' and mimeType = '${FOLDER_MIME_TYPE}' and trashed = false`,
+        fields: 'files(id)',
+        spaces: 'drive',
+        includeItemsFromAllDrives: true,
         supportsAllDrives: true
       });
 
-      if (!folder.data.id) {
-        throw new Error(`Failed to create intermediate folder: ${part}`);
-      }
+      if (!response.data.files?.length) {
+        const folderMetadata = {
+          name: part,
+          mimeType: FOLDER_MIME_TYPE,
+          parents: [currentFolderId]
+        };
+        const folder = await drive.files.create({
+          requestBody: folderMetadata,
+          fields: 'id',
+          supportsAllDrives: true
+        });
 
-      currentFolderId = folder.data.id;
-    } else {
-      currentFolderId = response.data.files[0].id!;
+        if (!folder.data.id) {
+          throw new Error(`Failed to create intermediate folder: ${part}`);
+        }
+
+        currentFolderId = folder.data.id;
+      } else {
+        currentFolderId = response.data.files[0].id!;
+      }
     }
+
+    return currentFolderId;
   }
 
-  return currentFolderId;
-}
-
-async function resolveFolderId(input: string | undefined): Promise<string> {
-  if (!input) return 'root';
-
-  if (input.startsWith('/')) {
-    return resolvePath(input);
-  } else {
+  async function resolveFolderId(input: string | undefined): Promise<string> {
+    if (!input) return 'root';
+    if (input.startsWith('/')) return resolvePath(input);
     return input;
   }
-}
 
-function validateTextFileExtension(name: string) {
-  const ext = getExtensionFromFilename(name);
-  if (!['txt', 'md'].includes(ext)) {
-    throw new Error("File name must end with .txt or .md for text files.");
-  }
-}
-
-async function checkFileExists(name: string, parentFolderId: string = 'root'): Promise<string | null> {
-  try {
-    const escapedName = escapeDriveQuery(name);
-    const query = `name = '${escapedName}' and '${parentFolderId}' in parents and trashed = false`;
-
-    const res = await getDrive().files.list({
-      q: query,
-      fields: 'files(id, name, mimeType)',
-      pageSize: 1,
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true
-    });
-
-    if (res.data.files && res.data.files.length > 0) {
-      return res.data.files[0].id || null;
+  function validateTextFileExtension(name: string) {
+    const ext = getExtensionFromFilename(name);
+    if (!['txt', 'md'].includes(ext)) {
+      throw new Error("File name must end with .txt or .md for text files.");
     }
-    return null;
-  } catch (error) {
-    log('Error checking file existence:', error);
-    return null;
-  }
-}
-
-// -----------------------------------------------------------------------------
-// AUTHENTICATION HELPER
-// -----------------------------------------------------------------------------
-async function ensureAuthenticated() {
-  if (authClient) return;
-
-  if (authenticationPromise) {
-    log('Authentication already in progress, waiting...');
-    authClient = await authenticationPromise;
-    return;
   }
 
-  log('Initializing authentication');
-  authenticationPromise = authenticate();
-  try {
-    authClient = await authenticationPromise;
-    log('Authentication complete');
-  } finally {
-    authenticationPromise = null;
+  async function checkFileExists(name: string, parentFolderId: string = 'root'): Promise<string | null> {
+    try {
+      const escapedName = escapeDriveQuery(name);
+      const query = `name = '${escapedName}' and '${parentFolderId}' in parents and trashed = false`;
+
+      const res = await drive.files.list({
+        q: query,
+        fields: 'files(id, name, mimeType)',
+        pageSize: 1,
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true
+      });
+
+      if (res.data.files && res.data.files.length > 0) {
+        return res.data.files[0].id || null;
+      }
+      return null;
+    } catch (error) {
+      log('Error checking file existence:', error);
+      return null;
+    }
   }
-}
 
-// -----------------------------------------------------------------------------
-// DOMAIN MODULES
-// -----------------------------------------------------------------------------
-const domainModules = [driveTools, docsTools, sheetsTools, slidesTools, calendarTools];
-
-function buildToolContext(): ToolContext {
   return {
     authClient,
+    account: alias,
     google,
-    getDrive,
-    getCalendar,
+    getDrive: () => drive,
+    getCalendar: () => calendar,
     log,
     resolvePath,
     resolveFolderId,
     checkFileExists,
     validateTextFileExtension,
+    getTokenPath: () => accountManager.getTokensPath(alias),
   };
 }
+
+function buildAccountMgmtContext(): ToolContext {
+  const noop = () => { throw new Error('Drive not available in account-management context'); };
+  return {
+    authClient: null,
+    account: '',
+    google,
+    getDrive: noop as any,
+    getCalendar: noop as any,
+    log,
+    resolvePath: async () => { throw new Error('not available'); },
+    resolveFolderId: async () => { throw new Error('not available'); },
+    checkFileExists: async () => null,
+    validateTextFileExtension: () => {},
+    getTokenPath: () => '',
+    listAccounts: () => accountManager.listAccounts(),
+    triggerAuth: async (alias: string, email?: string) => {
+      // Ensure the account exists in registry
+      const existing = await accountManager.getAccount(alias);
+      if (!existing) {
+        await accountManager.addAccount(alias, email ?? alias);
+      } else if (email && existing.email !== email) {
+        await accountManager.addAccount(alias, email);
+      }
+      const tokenPath = accountManager.getTokensPath(alias);
+      const oauth2Client = await initializeOAuth2Client();
+      const authServer = new AuthServer(oauth2Client, tokenPath);
+      const started = await authServer.start(true);
+      if (!started) {
+        throw new Error('Failed to start authentication server. Check port availability.');
+      }
+      driveClientCache.clearEntry(alias);
+      if (authServer.authCompletedSuccessfully) {
+        return `Account "${alias}" authenticated successfully.`;
+      }
+      return `Authentication flow started for "${alias}". Complete sign-in in your browser.`;
+    },
+    removeAccount: async (aliasOrEmail: string) => {
+      const account = await accountManager.getAccount(aliasOrEmail);
+      if (!account) {
+        throw new Error(`Account not found: "${aliasOrEmail}"`);
+      }
+      await accountManager.removeAccount(account.alias);
+      driveClientCache.clearEntry(account.alias);
+      return `Account "${account.alias}" removed.`;
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN MODULES
+// -----------------------------------------------------------------------------
+const domainModules = [accountsTools, driveTools, docsTools, sheetsTools, slidesTools, calendarTools];
+
+const ACCOUNT_MGMT_TOOLS = new Set(['list_accounts', 'authenticate_account', 'remove_account']);
 
 // -----------------------------------------------------------------------------
 // SERVER FACTORY
@@ -222,8 +308,12 @@ function createMcpServer(): Server {
   );
 
   s.setRequestHandler(ListResourcesRequestSchema, async (request) => {
-    await ensureAuthenticated();
+    await ensureServerReady();
     log('Handling ListResources request', { params: request.params });
+    const alias = await resolveAccount(undefined);
+    const entry = await driveClientCache.getEntry(alias);
+    const drive: drive_v3.Drive = entry.drive;
+
     const pageSize = 10;
     const params: {
       pageSize: number,
@@ -244,7 +334,7 @@ function createMcpServer(): Server {
       params.pageToken = request.params.cursor;
     }
 
-    const res = await getDrive().files.list(params);
+    const res = await drive.files.list(params);
     log('Listed files', { count: res.data.files?.length });
     const files = res.data.files || [];
 
@@ -259,11 +349,15 @@ function createMcpServer(): Server {
   });
 
   s.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-    await ensureAuthenticated();
+    await ensureServerReady();
     log('Handling ReadResource request', { uri: request.params.uri });
+    const alias = await resolveAccount(undefined);
+    const entry = await driveClientCache.getEntry(alias);
+    const drive: drive_v3.Drive = entry.drive;
+
     const fileId = request.params.uri.replace("gdrive:///", "");
 
-    const file = await getDrive().files.get({
+    const file = await drive.files.get({
       fileId,
       fields: "mimeType",
       supportsAllDrives: true
@@ -284,7 +378,7 @@ function createMcpServer(): Server {
         default: exportMimeType = "text/plain"; break;
       }
 
-      const res = await getDrive().files.export(
+      const res = await drive.files.export(
         { fileId, mimeType: exportMimeType },
         { responseType: "text" },
       );
@@ -300,7 +394,7 @@ function createMcpServer(): Server {
         ],
       };
     } else {
-      const res = await getDrive().files.get(
+      const res = await drive.files.get(
         { fileId, alt: "media", supportsAllDrives: true },
         { responseType: "arraybuffer" },
       );
@@ -332,19 +426,36 @@ function createMcpServer(): Server {
 
   s.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
-      tools: domainModules.flatMap(m => m.toolDefinitions),
+      tools: domainModules.flatMap(m => m.toolDefinitions).map(def =>
+        ACCOUNT_MGMT_TOOLS.has(def.name)
+          ? def
+          : { ...def, inputSchema: withAccountParam(def.inputSchema) }
+      ),
     };
   });
 
   s.setRequestHandler(CallToolRequestSchema, async (request) => {
-    await ensureAuthenticated();
-    log('Handling tool request', { tool: request.params.name });
-
-    const ctx = buildToolContext();
+    await ensureServerReady();
+    const toolName = request.params.name;
+    const args = request.params.arguments ?? {};
+    log('Handling tool request', { tool: toolName });
 
     try {
+      // Account-management tools get a special context with no Drive/Calendar
+      if (ACCOUNT_MGMT_TOOLS.has(toolName)) {
+        const ctx = buildAccountMgmtContext();
+        for (const mod of domainModules) {
+          const result = await mod.handleTool(toolName, args, ctx);
+          if (result !== null) return result;
+        }
+        return errorResponse('Tool not found');
+      }
+
+      const alias = await resolveAccount(args.account as string | undefined);
+      const ctx = await buildToolContext(alias);
+
       for (const mod of domainModules) {
-        const result = await mod.handleTool(request.params.name, request.params.arguments ?? {}, ctx);
+        const result = await mod.handleTool(toolName, args, ctx);
         if (result !== null) return result;
       }
       return errorResponse("Tool not found");
@@ -372,10 +483,10 @@ Usage:
   npx @yourusername/google-drive-mcp [command] [options]
 
 Commands:
-  auth     Run the authentication flow
-  start    Start the MCP server (default)
-  version  Show version information
-  help     Show this help message
+  auth [alias]  Run the authentication flow (alias defaults to "default")
+  start         Start the MCP server (default)
+  version       Show version information
+  help          Show this help message
 
 Transport Options:
   --transport <stdio|http>   Transport mode (default: stdio)
@@ -384,6 +495,7 @@ Transport Options:
 
 Examples:
   npx @yourusername/google-drive-mcp auth
+  npx @yourusername/google-drive-mcp auth work
   npx @yourusername/google-drive-mcp start
   npx @yourusername/google-drive-mcp start --transport http --port 3100
   npx @yourusername/google-drive-mcp version
@@ -414,10 +526,19 @@ function showVersion(): void {
   console.log(`Google Drive MCP Server v${VERSION}`);
 }
 
-async function runAuthServer(): Promise<void> {
+async function runAuthServer(alias = 'default'): Promise<void> {
   try {
+    await accountManager.migrateDefaultAccount();
+
+    // Ensure the account entry exists
+    const existing = await accountManager.getAccount(alias);
+    if (!existing) {
+      await accountManager.addAccount(alias, alias);
+    }
+
+    const tokenPath = accountManager.getTokensPath(alias);
     const oauth2Client = await initializeOAuth2Client();
-    const authServerInstance = new AuthServer(oauth2Client);
+    const authServerInstance = new AuthServer(oauth2Client, tokenPath);
     const success = await authServerInstance.start(true);
 
     if (!success && !authServerInstance.authCompletedSuccessfully) {
@@ -427,7 +548,7 @@ async function runAuthServer(): Promise<void> {
       );
       process.exit(1);
     } else if (authServerInstance.authCompletedSuccessfully) {
-      console.log("Authentication successful.");
+      console.log(`Authentication successful for account "${alias}".`);
       process.exit(0);
     }
 
@@ -439,7 +560,7 @@ async function runAuthServer(): Promise<void> {
       if (authServerInstance.authCompletedSuccessfully) {
         clearInterval(intervalId);
         await authServerInstance.stop();
-        console.log("Authentication completed successfully!");
+        console.log(`Authentication completed successfully for account "${alias}"!`);
         process.exit(0);
       }
     }, 1000);
@@ -455,6 +576,7 @@ async function runAuthServer(): Promise<void> {
 
 interface CliArgs {
   command: string | undefined;
+  authAlias: string;
   transport: 'stdio' | 'http';
   httpPort: number;
   httpHost: string;
@@ -463,6 +585,7 @@ interface CliArgs {
 function parseCliArgs(): CliArgs {
   const args = process.argv.slice(2);
   let command: string | undefined;
+  let authAlias = 'default';
   let transport: string | undefined;
   let httpPort: string | undefined;
   let httpHost: string | undefined;
@@ -492,6 +615,12 @@ function parseCliArgs(): CliArgs {
       command = arg;
       continue;
     }
+
+    // Positional after 'auth' is the alias
+    if (command === 'auth' && !arg.startsWith('--')) {
+      authAlias = arg;
+      continue;
+    }
   }
 
   const resolvedTransport = transport || process.env.MCP_TRANSPORT || 'stdio';
@@ -508,6 +637,7 @@ function parseCliArgs(): CliArgs {
 
   return {
     command,
+    authAlias,
     transport: resolvedTransport,
     httpPort: resolvedPort,
     httpHost: httpHost || process.env.MCP_HTTP_HOST || '127.0.0.1',
@@ -519,7 +649,7 @@ async function main() {
 
   switch (args.command) {
     case "auth":
-      await runAuthServer();
+      await runAuthServer(args.authAlias);
       break;
     case "start":
     case undefined:
@@ -572,10 +702,6 @@ interface HttpSession {
   server: Server;
 }
 
-/**
- * Create an Express app with MCP Streamable HTTP routes.
- * Shared by production (startHttpTransport) and tests.
- */
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 interface CreateHttpAppOptions {
@@ -615,7 +741,6 @@ function createHttpApp(host: string, options?: CreateHttpAppOptions) {
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
-      // If we have an existing session, delegate to it
       if (sessionId && sessions.has(sessionId)) {
         const session = sessions.get(sessionId)!;
         resetSessionTimer(sessionId);
@@ -623,7 +748,6 @@ function createHttpApp(host: string, options?: CreateHttpAppOptions) {
         return;
       }
 
-      // New session: only accept initialize requests
       if (!isInitializeRequest(req.body)) {
         res.status(400).json({
           jsonrpc: '2.0',
@@ -633,7 +757,6 @@ function createHttpApp(host: string, options?: CreateHttpAppOptions) {
         return;
       }
 
-      // Create a new session
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
       });
@@ -641,7 +764,6 @@ function createHttpApp(host: string, options?: CreateHttpAppOptions) {
 
       await sessionServer.connect(transport);
 
-      // Track the session once we know its ID (set after handleRequest processes init)
       transport.onclose = () => {
         const sid = transport.sessionId;
         if (sid) {
@@ -762,11 +884,10 @@ async function startHttpTransport(args: CliArgs): Promise<void> {
 export { main, server, createMcpServer, createHttpApp };
 
 /** Inject a fake auth client for testing — bypasses authenticate(). */
-export function _setAuthClientForTesting(client: any) {
-  authClient = client;
-  _drive = null;
-  _calendar = null;
-  _lastAuthClient = null;
+export function _setAuthClientForTesting(client: any, alias = 'default') {
+  driveClientCache.setPrebuiltClient(alias, client);
+  // Seed account manager so list_accounts works in tests
+  accountManager.addAccount(alias, alias).catch(() => {});
 }
 
 // Run the CLI (skip when imported by tests)

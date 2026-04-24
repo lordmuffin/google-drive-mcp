@@ -17,9 +17,9 @@ export class AuthServer {
   public readonly portRange: { start: number; end: number };
   public authCompletedSuccessfully = false; // Flag for standalone script
 
-  constructor(oauth2Client: OAuth2Client) {
+  constructor(oauth2Client: OAuth2Client, tokenPath?: string) {
     this.baseOAuth2Client = oauth2Client;
-    this.tokenManager = new TokenManager(oauth2Client);
+    this.tokenManager = new TokenManager(oauth2Client, tokenPath);
     this.app = express();
     const raw = process.env.GOOGLE_DRIVE_MCP_AUTH_PORT;
     const portStart = raw ? Number(raw) : 3000;

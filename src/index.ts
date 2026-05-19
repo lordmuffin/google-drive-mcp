@@ -2,16 +2,14 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
-  isInitializeRequest,
 } from "@modelcontextprotocol/sdk/types.js";
-import { randomUUID } from 'crypto';
 import { google } from "googleapis";
 import type { drive_v3 } from "googleapis";
 import { initializeOAuth2Client, AuthServer } from './auth.js';
@@ -698,151 +696,53 @@ async function startStdioTransport(): Promise<void> {
 }
 
 interface HttpSession {
-  transport: StreamableHTTPServerTransport;
+  transport: SSEServerTransport;
   server: Server;
 }
 
-const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-
-interface CreateHttpAppOptions {
-  sessionIdleTimeoutMs?: number;
-}
-
-function createHttpApp(host: string, options?: CreateHttpAppOptions) {
-  const idleTimeoutMs = options?.sessionIdleTimeoutMs ?? SESSION_IDLE_TIMEOUT_MS;
+function createHttpApp(host: string) {
   const app = createMcpExpressApp({ host });
   const sessions = new Map<string, HttpSession>();
-  const sessionTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  function resetSessionTimer(sid: string) {
-    const existing = sessionTimers.get(sid);
-    if (existing) clearTimeout(existing);
-    sessionTimers.set(sid, setTimeout(async () => {
-      const session = sessions.get(sid);
-      if (session) {
-        log(`Session idle timeout: ${sid}`);
-        await session.transport.close();
-        await session.server.close();
-        sessions.delete(sid);
-      }
-      sessionTimers.delete(sid);
-    }, idleTimeoutMs));
-  }
-
-  function clearSessionTimer(sid: string) {
-    const timer = sessionTimers.get(sid);
-    if (timer) {
-      clearTimeout(timer);
-      sessionTimers.delete(sid);
-    }
-  }
-
-  app.post('/mcp', async (req, res) => {
+  app.get('/sse', async (_req, res) => {
     try {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined;
-
-      if (sessionId && sessions.has(sessionId)) {
-        const session = sessions.get(sessionId)!;
-        resetSessionTimer(sessionId);
-        await session.transport.handleRequest(req, res, req.body);
-        return;
-      }
-
-      if (!isInitializeRequest(req.body)) {
-        res.status(400).json({
-          jsonrpc: '2.0',
-          error: { code: -32600, message: 'Bad Request: expected initialize request or valid session ID' },
-          id: null,
-        });
-        return;
-      }
-
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-      });
+      const transport = new SSEServerTransport('/messages', res);
+      const sessionId = transport.sessionId;
       const sessionServer = createMcpServer();
 
-      await sessionServer.connect(transport);
-
       transport.onclose = () => {
-        const sid = transport.sessionId;
-        if (sid) {
-          clearSessionTimer(sid);
-          sessions.delete(sid);
-          log(`Session closed: ${sid}`);
-        }
+        sessions.delete(sessionId);
+        log(`SSE session closed: ${sessionId}`);
       };
 
-      await transport.handleRequest(req, res, req.body);
-
-      const sid = transport.sessionId;
-      if (sid) {
-        sessions.set(sid, { transport, server: sessionServer });
-        resetSessionTimer(sid);
-        log(`New session created: ${sid}`);
-      }
+      await sessionServer.connect(transport);
+      sessions.set(sessionId, { transport, server: sessionServer });
+      log(`SSE session opened: ${sessionId}`);
     } catch (error) {
-      log('Error handling POST /mcp', { error: (error as Error).message });
+      log('Error handling GET /sse', { error: (error as Error).message });
       if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: '2.0',
-          error: { code: -32603, message: 'Internal server error' },
-          id: null,
-        });
+        res.status(500).send('Error establishing SSE stream');
       }
     }
   });
 
-  app.get('/mcp', async (req, res) => {
-    try {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      if (!sessionId || !sessions.has(sessionId)) {
-        res.status(400).json({
-          jsonrpc: '2.0',
-          error: { code: -32600, message: 'Bad Request: missing or invalid session ID' },
-          id: null,
-        });
-        return;
-      }
-      const session = sessions.get(sessionId)!;
-      resetSessionTimer(sessionId);
-      await session.transport.handleRequest(req, res);
-    } catch (error) {
-      log('Error handling GET /mcp', { error: (error as Error).message });
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: '2.0',
-          error: { code: -32603, message: 'Internal server error' },
-          id: null,
-        });
-      }
+  app.post('/messages', async (req, res) => {
+    const sessionId = req.query.sessionId as string | undefined;
+    if (!sessionId) {
+      res.status(400).send('Missing sessionId parameter');
+      return;
     }
-  });
-
-  app.delete('/mcp', async (req, res) => {
+    const session = sessions.get(sessionId);
+    if (!session) {
+      res.status(404).send('Session not found');
+      return;
+    }
     try {
-      const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      if (!sessionId || !sessions.has(sessionId)) {
-        res.status(400).json({
-          jsonrpc: '2.0',
-          error: { code: -32600, message: 'Bad Request: missing or invalid session ID' },
-          id: null,
-        });
-        return;
-      }
-      const session = sessions.get(sessionId)!;
-      await session.transport.close();
-      await session.server.close();
-      sessions.delete(sessionId);
-      res.status(200).end();
+      await session.transport.handlePostMessage(req, res, req.body);
     } catch (error) {
-      log('Error handling DELETE /mcp', { error: (error as Error).message });
+      log('Error handling POST /messages', { sessionId, error: (error as Error).message });
       if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: '2.0',
-          error: { code: -32603, message: 'Internal server error' },
-          id: null,
-        });
+        res.status(500).send('Error handling request');
       }
     }
   });
@@ -858,15 +758,13 @@ async function startHttpTransport(args: CliArgs): Promise<void> {
     const { app, sessions } = createHttpApp(httpHost);
 
     const httpServer = app.listen(httpPort, httpHost, () => {
-      log(`HTTP server listening on ${httpHost}:${httpPort}`);
+      log(`HTTP SSE server listening on ${httpHost}:${httpPort} (GET /sse, POST /messages)`);
     });
 
     const shutdown = async () => {
       log('Shutting down HTTP server...');
-      for (const [sid, session] of sessions) {
+      for (const session of Array.from(sessions.values())) {
         await session.transport.close();
-        await session.server.close();
-        sessions.delete(sid);
       }
       httpServer.close();
       process.exit(0);
